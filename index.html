@@ -35,7 +35,7 @@
       <i class="fa-regular fa-compass text-xl"></i>
       <h1 class="text-lg font-bold">東京自由行地圖筆記</h1>
     </div>
-    <!-- 拆分獨立按鈕 -->
+    <!-- 獨立按鈕 -->
     <div class="flex items-center gap-2">
       <button onclick="openFHModal('flight')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
         <i class="fa-solid fa-plane"></i> + 新增航班
@@ -70,7 +70,7 @@
         <nav id="region-list" class="space-y-1"></nav>
       </div>
 
-      <!-- 2. 準備物品/待辦清單 (完全可拖拉排序與編輯) -->
+      <!-- 2. 準備物品/待辦清單 -->
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
           <h2 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
@@ -89,7 +89,6 @@
           </button>
         </div>
 
-        <!-- 拖拉清單容器 -->
         <div id="todo-list" class="space-y-1.5 max-h-80 overflow-y-auto text-xs pt-1"></div>
       </div>
     </aside>
@@ -97,19 +96,30 @@
     <!-- 右側主內容區 -->
     <main class="md:col-span-3 space-y-5">
 
-      <!-- 航班與酒店卡片展示區 -->
+      <!-- 1. 置頂行程重點備忘框 (Memo Box) -->
+      <div class="bg-amber-50/90 rounded-2xl p-4 shadow-sm border border-amber-200 space-y-2">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-amber-900 text-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-note-sticky text-amber-600"></i> 行程重點備忘錄 / 隨手記
+          </h3>
+          <span id="memo-status" class="text-[10px] text-amber-600">自動儲存中</span>
+        </div>
+        <textarea id="memo-input" rows="3" placeholder="在此記下 JR Pass 兌換碼、WiFi 密碼、重要行程提醒等..." class="w-full p-2.5 bg-white/80 border border-amber-200/80 rounded-xl text-xs text-slate-700 outline-none focus:ring-2 focus:ring-amber-400"></textarea>
+      </div>
+
+      <!-- 2. 航班與酒店卡片區 -->
       <div id="flight-hotel-section" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 
-      <!-- 搜尋列與分類頁籤 (已優化搜尋) -->
+      <!-- 3. 即時搜尋列與分類頁籤 -->
       <div class="flex flex-col md:flex-row justify-between items-center gap-4">
         <div class="relative w-full md:w-80">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
-          <input type="text" id="search-input" onkeyup="renderApp()" placeholder="搜尋名稱、車站、推介或備註..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+          <input type="text" id="search-input" placeholder="即時搜尋店名、區域、推介或備註..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
         </div>
         <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1" id="category-tabs"></div>
       </div>
 
-      <!-- Google 大地圖總覽區塊 -->
+      <!-- 4. Google 大地圖總覽區塊 -->
       <div id="map-section" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
         <div class="flex justify-between items-center mb-2 px-1">
           <span class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
@@ -128,7 +138,7 @@
         <span id="places-count" class="text-xs text-slate-400">共 0 個地點</span>
       </div>
 
-      <!-- 地點列表 -->
+      <!-- 5. 地點列表卡片 -->
       <div id="places-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 
     </main>
@@ -206,7 +216,7 @@
     </div>
   </div>
 
-  <!-- Modal 2: 航班 / 酒店Modal (分開獨立邏輯與支援編輯) -->
+  <!-- Modal 2: 航班 / 酒店 Modal -->
   <div id="fhModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
       <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
@@ -292,7 +302,7 @@
   <!-- Firebase SDK & JS Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
@@ -362,7 +372,39 @@
       leafletMap.setView(position, 15);
     }
 
-    // Modal 控制 (景點)
+    // 行程重點備忘錄 (Memo Box) 即時自動同步
+    let memoTimeout = null;
+    const memoInput = document.getElementById('memo-input');
+    const memoStatus = document.getElementById('memo-status');
+
+    memoInput.addEventListener('input', () => {
+      memoStatus.innerText = '儲存中...';
+      clearTimeout(memoTimeout);
+      memoTimeout = setTimeout(async () => {
+        await setDoc(doc(db, "settings", "memo"), { content: memoInput.value });
+        memoStatus.innerText = '已自動儲存';
+      }, 800);
+    });
+
+    // 載入 Memo 資料
+    async function loadMemo() {
+      const docSnap = await getDoc(doc(db, "settings", "memo"));
+      if (docSnap.exists()) {
+        memoInput.value = docSnap.data().content || '';
+        memoStatus.innerText = '已同步雲端';
+      } else {
+        memoStatus.innerText = '準備就緒';
+      }
+    }
+    loadMemo();
+
+    // 綁定即時搜尋事件 (支援動態打字、中文輸入法)
+    const searchInput = document.getElementById('search-input');
+    ['input', 'keyup', 'compositionend'].forEach(evt => {
+      searchInput.addEventListener(evt, () => renderApp());
+    });
+
+    // Modal 控制
     window.openAddModal = () => {
       document.getElementById('place-form').reset();
       document.getElementById('edit-id').value = '';
@@ -394,7 +436,6 @@
 
     window.closePlaceModal = () => document.getElementById('placeModal').classList.add('hidden');
 
-    // 分開獨立 Modal 控制 (航班 / 酒店)
     window.openFHModal = (type, editId = null) => {
       document.getElementById('fh-form').reset();
       document.getElementById('fh-edit-id').value = editId || '';
@@ -453,7 +494,6 @@
       document.getElementById('category-select').innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     }
 
-    // SortableJS 初始化
     function initRegionSortable() {
       Sortable.create(document.getElementById('manage-regions-list'), {
         handle: '.drag-handle', ghostClass: 'ghost',
@@ -479,7 +519,6 @@
       });
     }
 
-    // 準備物品/待辦清單拖拉與編輯
     function initTodoSortable() {
       const el = document.getElementById('todo-list');
       Sortable.create(el, {
@@ -490,7 +529,6 @@
           el.querySelectorAll('[data-todo-id]').forEach(node => {
             newOrderIds.push(node.getAttribute('data-todo-id'));
           });
-          // 更新 Firebase 順序
           for (let index = 0; index < newOrderIds.length; index++) {
             await updateDoc(doc(db, "todos", newOrderIds[index]), { order: index });
           }
@@ -573,7 +611,6 @@
       `).join('');
     }
 
-    // Google Maps 網址解析
     document.getElementById('parse-btn').addEventListener('click', () => {
       const url = document.getElementById('map-url').value.trim();
       if (!url) return alert('請先貼上網址！');
@@ -612,7 +649,6 @@
       });
     }
 
-    // 儲存景點
     document.getElementById('place-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const editId = document.getElementById('edit-id').value;
@@ -645,7 +681,6 @@
       closePlaceModal();
     });
 
-    // 儲存/更新 航班與酒店
     document.getElementById('fh-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const fhEditId = document.getElementById('fh-edit-id').value;
@@ -698,12 +733,11 @@
       if (confirm("確定刪除？")) await deleteDoc(doc(db, "places", id));
     };
 
-    // 渲染 UI 應用程式
+    // 主渲染與即時搜尋核心
     function renderApp() {
-      // 全方位精確搜尋比對
       const searchKeyword = document.getElementById('search-input').value.trim().toLowerCase();
 
-      // 1. 車站區域
+      // 1. 車站區域渲染
       document.getElementById('region-count').innerText = `${regions.length}個`;
       let regHTML = `
         <button onclick="setRegion('all')" class="w-full flex justify-between items-center px-3 py-2 rounded-xl text-xs font-medium transition ${currentRegion === 'all' ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
@@ -721,7 +755,7 @@
       });
       document.getElementById('region-list').innerHTML = regHTML;
 
-      // 2. 類別標籤
+      // 2. 類別頁籤渲染
       let catHTML = `<button onclick="setCategory('all')" class="px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${currentCategory === 'all' ? 'bg-[#4f46e5] text-white' : 'bg-white text-slate-600 border border-slate-200'}">全部</button>`;
       categories.forEach(c => {
         const active = currentCategory === c.name;
@@ -761,12 +795,12 @@
         `;
       }).join('');
 
-      // 4. 景點過濾搜尋
+      // 4. 即時過濾比對邏輯 (全方位的欄位比對)
       const filtered = allPlaces.filter(p => {
         const matchRegion = currentRegion === 'all' || p.region === currentRegion;
         const matchCategory = currentCategory === 'all' || p.category === currentCategory;
         
-        // 多欄位模糊搜尋比對
+        // 任何欄位包含搜尋文字即通過
         const matchSearch = !searchKeyword || 
           (p.title && p.title.toLowerCase().includes(searchKeyword)) ||
           (p.region && p.region.toLowerCase().includes(searchKeyword)) ||
@@ -780,7 +814,7 @@
       document.getElementById('current-region-label').innerText = currentRegion === 'all' ? '全部車站' : currentRegion;
       document.getElementById('places-count').innerText = `共 ${filtered.length} 個地點`;
 
-      // 5. 地圖 Pin 點
+      // 5. 地圖 Pin 點同步更新
       initMap();
       Object.values(markersMap).forEach(m => leafletMap.removeLayer(m));
       markersMap = {};
@@ -872,7 +906,7 @@
       renderApp();
     });
 
-    // Firebase 監聽 待辦清單 (根據 order 手動排序)
+    // Firebase 監聽 待辦清單
     onSnapshot(collection(db, "todos"), (snapshot) => {
       allTodos = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       allTodos.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
