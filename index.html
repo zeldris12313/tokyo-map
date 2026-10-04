@@ -25,6 +25,7 @@
       100% { transform: scale(1); }
     }
     .ghost { opacity: 0.4; background: #e0e7ff !important; }
+    .hotel-mini-map { height: 160px; width: 100%; border-radius: 0.75rem; z-index: 1; }
   </style>
 </head>
 <body class="bg-[#f3f4f6] text-slate-800 font-sans min-h-screen">
@@ -155,7 +156,7 @@
         <input type="hidden" id="edit-id">
 
         <div class="bg-indigo-50/60 p-3 rounded-xl border border-indigo-100">
-          <label class="block font-medium text-slate-700 mb-1 text-xs">Google Maps 網址 (貼上長網址可自動抓店名與座標)</label>
+          <label class="block font-medium text-slate-700 mb-1 text-xs">Google Maps 網址 (可自動抓取名稱、座標、分類與區域)</label>
           <div class="flex gap-2">
             <input type="url" id="map-url" placeholder="https://www.google.com/maps/place/..." class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
             <button type="button" id="parse-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700">解析</button>
@@ -178,13 +179,17 @@
           </div>
         </div>
 
-        <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-          <label class="block font-medium text-slate-700 text-xs">圖片來源 (選擇網址或直接上傳圖片)</label>
-          <input type="url" id="image-url" placeholder="貼上圖片網址 https://..." class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none">
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-slate-400">或上傳檔案:</span>
-            <input type="file" id="image-file" accept="image/*" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-          </div>
+        <!-- 圖片上傳區塊 -->
+        <div class="space-y-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <label class="block font-medium text-slate-700 text-xs">主封面圖片 (網址或檔案)</label>
+          <input type="url" id="image-url" placeholder="貼上封面圖片網址 https://..." class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none">
+          <input type="file" id="image-file" accept="image/*" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+
+          <hr class="border-slate-200 my-2">
+
+          <label class="block font-medium text-slate-700 text-xs">額外相片上傳 (可一次選取多張)</label>
+          <input type="file" id="extra-images-file" accept="image/*" multiple class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
+          <div id="extra-images-preview" class="flex flex-wrap gap-2 pt-1"></div>
         </div>
 
         <div>
@@ -255,7 +260,7 @@
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航</label>
+          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航 (包含座標或地址可展示精簡縮圖)</label>
           <input type="text" id="fh-nav" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
         </div>
 
@@ -298,6 +303,23 @@
     </div>
   </div>
 
+  <!-- Modal 5: 全螢幕相片檢視燈箱 (Lightbox) -->
+  <div id="lightboxModal" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center hidden p-4 select-none" onclick="closeLightbox(event)">
+    <button onclick="closeLightbox(event, true)" class="absolute top-4 right-4 text-white hover:text-slate-300 text-2xl z-10 p-2">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <button onclick="prevLightboxImage(event)" class="absolute left-4 text-white hover:text-slate-300 text-3xl z-10 p-2 bg-slate-800/50 rounded-full w-12 h-12 flex items-center justify-center">
+      ‹
+    </button>
+    <button onclick="nextLightboxImage(event)" class="absolute right-4 text-white hover:text-slate-300 text-3xl z-10 p-2 bg-slate-800/50 rounded-full w-12 h-12 flex items-center justify-center">
+      ›
+    </button>
+    <div class="max-w-4xl max-h-[85vh] p-2 flex flex-col items-center">
+      <img id="lightbox-img" src="" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl">
+      <span id="lightbox-counter" class="text-white text-xs mt-3 bg-slate-800/80 px-3 py-1 rounded-full"></span>
+    </div>
+  </div>
+
   <!-- Firebase SDK & JS Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -316,7 +338,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 預設區域與類別 (雲端為主)
     const defaultRegions = ["東京", "新宿", "澀谷", "淺草/上野", "原宿/表參道", "秋葉原", "池袋", "六本木", "築地/台場"];
     const defaultCategories = [
       { name: "美食", icon: "fa-utensils", color: "bg-amber-100 text-amber-800" },
@@ -336,7 +357,10 @@
     let markersMap = {};
     let adjustMarker = null;
 
-    // 將區域與類別配置同步至 Firebase 雲端
+    // 燈箱大圖狀態
+    let lightboxImages = [];
+    let currentLightboxIndex = 0;
+
     async function saveCloudConfig() {
       await setDoc(doc(db, "settings", "app_config"), {
         regions: regions,
@@ -377,7 +401,7 @@
       leafletMap.setView(position, 15);
     }
 
-    // 行程重點備忘錄 (Memo Box)
+    // 備忘錄
     let memoTimeout = null;
     const memoInput = document.getElementById('memo-input');
     const memoStatus = document.getElementById('memo-status');
@@ -391,17 +415,62 @@
       }, 800);
     });
 
-    // 監聽即時搜尋 (支援動態打字與中文輸入法)
     const searchInput = document.getElementById('search-input');
     ['input', 'keyup', 'compositionend'].forEach(evt => {
       searchInput.addEventListener(evt, () => renderApp());
     });
 
+    // 燈箱 (Lightbox) 邏輯
+    window.openLightbox = (imagesList, startIndex = 0) => {
+      if (!imagesList || imagesList.length === 0) return;
+      lightboxImages = imagesList;
+      currentLightboxIndex = startIndex;
+      updateLightboxDisplay();
+      document.getElementById('lightboxModal').classList.remove('hidden');
+    };
+
+    function updateLightboxDisplay() {
+      const imgEl = document.getElementById('lightbox-img');
+      const counterEl = document.getElementById('lightbox-counter');
+      imgEl.src = lightboxImages[currentLightboxIndex];
+      counterEl.innerText = `${currentLightboxIndex + 1} / ${lightboxImages.length}`;
+    }
+
+    window.closeLightbox = (e, force = false) => {
+      if (force || e.target.id === 'lightboxModal') {
+        document.getElementById('lightboxModal').classList.add('hidden');
+      }
+    };
+
+    window.prevLightboxImage = (e) => {
+      if (e) e.stopPropagation();
+      currentLightboxIndex = (currentLightboxIndex - 1 + lightboxImages.length) % lightboxImages.length;
+      updateLightboxDisplay();
+    };
+
+    window.nextLightboxImage = (e) => {
+      if (e) e.stopPropagation();
+      currentLightboxIndex = (currentLightboxIndex + 1) % lightboxImages.length;
+      updateLightboxDisplay();
+    };
+
+    window.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('lightboxModal');
+      if (!modal.classList.contains('hidden')) {
+        if (e.key === 'ArrowLeft') prevLightboxImage();
+        if (e.key === 'ArrowRight') nextLightboxImage();
+        if (e.key === 'Escape') closeLightbox(null, true);
+      }
+    });
+
     // Modal 控制
+    let existingExtraImages = [];
     window.openAddModal = () => {
       document.getElementById('place-form').reset();
       document.getElementById('edit-id').value = '';
       document.getElementById('modalTitle').innerText = '新增景點 / 食店';
+      existingExtraImages = [];
+      document.getElementById('extra-images-preview').innerHTML = '';
       populateSelects();
       document.getElementById('placeModal').classList.remove('hidden');
     };
@@ -423,8 +492,26 @@
       document.getElementById('lat').value = item.lat || '';
       document.getElementById('lng').value = item.lng || '';
 
+      existingExtraImages = item.extraImages || [];
+      renderExtraImagesPreview();
+
       if (item.lat && item.lng) updateAdjustMarker(item.lat, item.lng);
       document.getElementById('placeModal').classList.remove('hidden');
+    };
+
+    function renderExtraImagesPreview() {
+      const container = document.getElementById('extra-images-preview');
+      container.innerHTML = existingExtraImages.map((img, idx) => `
+        <div class="relative w-12 h-12 rounded-lg overflow-hidden border">
+          <img src="${img}" class="w-full h-full object-cover">
+          <button type="button" onclick="removeExistingExtraImage(${idx})" class="absolute top-0 right-0 bg-red-600 text-white text-[10px] w-4 h-4 flex items-center justify-center">✕</button>
+        </div>
+      `).join('');
+    }
+
+    window.removeExistingExtraImage = (idx) => {
+      existingExtraImages.splice(idx, 1);
+      renderExtraImagesPreview();
     };
 
     window.closePlaceModal = () => document.getElementById('placeModal').classList.add('hidden');
@@ -604,15 +691,22 @@
       `).join('');
     }
 
+    // 升級：Google Maps 網址解析 (包含自動識別分類與區域)
     document.getElementById('parse-btn').addEventListener('click', () => {
       const url = document.getElementById('map-url').value.trim();
       if (!url) return alert('請先貼上網址！');
 
-      const placeMatch = url.match(/\/place\/([^\/]+)/);
+      const decodedUrl = decodeURIComponent(url);
+
+      // 1. 抓取店名
+      const placeMatch = decodedUrl.match(/\/place\/([^\/]+)/);
+      let detectedTitle = '';
       if (placeMatch) {
-        document.getElementById('title').value = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+        detectedTitle = placeMatch[1].replace(/\+/g, ' ');
+        document.getElementById('title').value = detectedTitle;
       }
 
+      // 2. 抓取座標
       let detectedLat = null, detectedLng = null;
       const preciseCoordMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
       if (preciseCoordMatch) {
@@ -632,6 +726,41 @@
         updateAdjustMarker(detectedLat, detectedLng);
       }
       document.getElementById('nav-link').value = url;
+
+      // 3. 智慧辨識分類 (Category)
+      const titleAndUrl = (detectedTitle + ' ' + decodedUrl).toLowerCase();
+      let matchedCategory = '';
+      if (/ramen|拉麵|沾麵|sushi|壽司|烤肉|yakiniku|cafe|咖啡|甜點|居酒屋|美食|food|restaurant/i.test(titleAndUrl)) {
+        if (/cafe|咖啡|coffee/i.test(titleAndUrl)) matchedCategory = "咖啡";
+        else matchedCategory = "美食";
+      } else if (/park|park|shrine|神社|寺|景點|museum|博物館|sky|tower|水族館/i.test(titleAndUrl)) {
+        matchedCategory = "景點";
+      } else if (/store|shop|bic|yodobashi|唐吉訶德|donki|購物|商場|mall|outlet/i.test(titleAndUrl)) {
+        matchedCategory = "購物";
+      }
+
+      if (matchedCategory) {
+        const catSelect = document.getElementById('category-select');
+        for (let option of catSelect.options) {
+          if (option.value === matchedCategory) { option.selected = true; break; }
+        }
+      }
+
+      // 4. 智慧辨識區域 (Region)
+      let matchedRegion = '';
+      regions.forEach(r => {
+        const keywords = r.split('/');
+        keywords.forEach(kw => {
+          if (kw && titleAndUrl.includes(kw.toLowerCase())) matchedRegion = r;
+        });
+      });
+
+      if (matchedRegion) {
+        const regSelect = document.getElementById('region-select');
+        for (let option of regSelect.options) {
+          if (option.value === matchedRegion) { option.selected = true; break; }
+        }
+      }
     });
 
     async function getBase64Image(file) {
@@ -646,10 +775,20 @@
       e.preventDefault();
       const editId = document.getElementById('edit-id').value;
       const fileInput = document.getElementById('image-file');
+      const extraFileInput = document.getElementById('extra-images-file');
+      
       let finalImg = document.getElementById('image-url').value;
-
       if (fileInput.files.length > 0) {
         finalImg = await getBase64Image(fileInput.files[0]);
+      }
+
+      // 處理多張額外圖片
+      let newExtraImages = [...existingExtraImages];
+      if (extraFileInput.files.length > 0) {
+        for (let f of extraFileInput.files) {
+          const b64 = await getBase64Image(f);
+          newExtraImages.push(b64);
+        }
       }
 
       const placeData = {
@@ -657,6 +796,7 @@
         region: document.getElementById('region-select').value,
         category: document.getElementById('category-select').value,
         imageUrl: finalImg,
+        extraImages: newExtraImages,
         recommendation: document.getElementById('recommendation').value,
         notes: document.getElementById('notes').value,
         navLink: document.getElementById('nav-link').value,
@@ -677,6 +817,16 @@
     document.getElementById('fh-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const fhEditId = document.getElementById('fh-edit-id').value;
+      const navVal = document.getElementById('fh-nav').value;
+
+      // 嘗試從酒店導航自動抓取座標
+      let lat = null, lng = null;
+      const coordMatch = navVal.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || navVal.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+      if (coordMatch) {
+        lat = parseFloat(coordMatch[1]);
+        lng = parseFloat(coordMatch[2]);
+      }
+
       const fhData = {
         type: document.getElementById('fh-type').value,
         title: document.getElementById('fh-title').value,
@@ -684,8 +834,10 @@
         date2: document.getElementById('fh-date2').value,
         code: document.getElementById('fh-code').value,
         extra: document.getElementById('fh-extra').value,
-        nav: document.getElementById('fh-nav').value,
+        nav: navVal,
         notes: document.getElementById('fh-notes').value,
+        lat: lat,
+        lng: lng
       };
 
       if (fhEditId) {
@@ -729,7 +881,7 @@
     function renderApp() {
       const searchKeyword = document.getElementById('search-input').value.trim().toLowerCase();
 
-      // 1. 車站區域渲染 (修正：完美相符比對)
+      // 1. 車站區域
       document.getElementById('region-count').innerText = `${regions.length}個`;
       let regHTML = `
         <button onclick="setRegion('all')" class="w-full flex justify-between items-center px-3 py-2 rounded-xl text-xs font-medium transition ${currentRegion === 'all' ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
@@ -737,7 +889,6 @@
         </button>
       `;
       regions.forEach(r => {
-        // 比對邏輯：無論資料寫 "東京" 或 "東京/銀座"，只要有相符即統計入內
         const count = allPlaces.filter(p => p.region === r || (r.includes('/') && p.region && r.split('/').includes(p.region))).length;
         const active = currentRegion === r;
         regHTML += `
@@ -761,34 +912,54 @@
       catHTML += `<button onclick="openManageCategoriesModal()" class="text-xs text-indigo-600 px-2" title="管理類別"><i class="fa-solid fa-gear"></i></button>`;
       document.getElementById('category-tabs').innerHTML = catHTML;
 
-      // 3. 航班與酒店事項
+      // 3. 航班與酒店卡片 (酒店新增獨立精簡縮圖)
       const fhSec = document.getElementById('flight-hotel-section');
       fhSec.innerHTML = allFH.map(fh => {
         const isFlight = fh.type === 'flight';
+        const mapContainerId = `hotel-map-${fh.id}`;
+
         return `
-          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex justify-between items-start">
-            <div class="space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-xs px-2 py-0.5 rounded-md font-bold ${isFlight ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}">
-                  ${isFlight ? '✈️ 航班' : '🏨 酒店'}
-                </span>
-                ${fh.code ? `<span class="text-xs font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">代碼: ${fh.code}</span>` : ''}
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between space-y-3">
+            <div class="flex justify-between items-start">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs px-2 py-0.5 rounded-md font-bold ${isFlight ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}">
+                    ${isFlight ? '✈️ 航班' : '🏨 酒店'}
+                  </span>
+                  ${fh.code ? `<span class="text-xs font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600">代碼: ${fh.code}</span>` : ''}
+                </div>
+                <h4 class="font-bold text-slate-800 text-sm mt-1">${fh.title}</h4>
+                <p class="text-xs text-slate-500">${fh.date1 ? '📅 ' + fh.date1 : ''} ${fh.date2 ? ' ➔ ' + fh.date2 : ''}</p>
+                ${fh.extra ? `<p class="text-xs text-slate-600">📌 ${fh.extra}</p>` : ''}
+                ${fh.notes ? `<p class="text-xs text-slate-400 italic">${fh.notes}</p>` : ''}
+                ${fh.nav ? `<a href="${fh.nav}" target="_blank" class="inline-block text-xs text-indigo-600 hover:underline mt-1"><i class="fa-solid fa-location-arrow"></i> 開啟地圖/導航</a>` : ''}
               </div>
-              <h4 class="font-bold text-slate-800 text-sm mt-1">${fh.title}</h4>
-              <p class="text-xs text-slate-500">${fh.date1 ? '📅 ' + fh.date1 : ''} ${fh.date2 ? ' ➔ ' + fh.date2 : ''}</p>
-              ${fh.extra ? `<p class="text-xs text-slate-600">📌 ${fh.extra}</p>` : ''}
-              ${fh.notes ? `<p class="text-xs text-slate-400 italic">${fh.notes}</p>` : ''}
-              ${fh.nav ? `<a href="${fh.nav}" target="_blank" class="inline-block text-xs text-indigo-600 hover:underline mt-1"><i class="fa-solid fa-location-arrow"></i> 開啟地圖/導航</a>` : ''}
+              <div class="flex items-center gap-2">
+                <button onclick="openFHModal('${fh.type}', '${fh.id}')" class="text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                <button onclick="deleteFH('${fh.id}')" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can text-xs"></i></button>
+              </div>
             </div>
-            <div class="flex items-center gap-2">
-              <button onclick="openFHModal('${fh.type}', '${fh.id}')" class="text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
-              <button onclick="deleteFH('${fh.id}')" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can text-xs"></i></button>
-            </div>
+
+            ${!isFlight && fh.lat && fh.lng ? `<div id="${mapContainerId}" class="hotel-mini-map border"></div>` : ''}
           </div>
         `;
       }).join('');
 
-      // 4. 即時過濾搜尋 logic (強大全面匹配)
+      // 初始化酒店縮圖小地圖
+      setTimeout(() => {
+        allFH.forEach(fh => {
+          if (fh.type === 'hotel' && fh.lat && fh.lng) {
+            const container = document.getElementById(`hotel-map-${fh.id}`);
+            if (container && !container._leaflet_id) {
+              const miniMap = L.map(`hotel-map-${fh.id}`, { zoomControl: false, dragging: false, scrollWheelZoom: false }).setView([fh.lat, fh.lng], 15);
+              L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 19, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'] }).addTo(miniMap);
+              L.marker([fh.lat, fh.lng]).addTo(miniMap);
+            }
+          }
+        });
+      }, 300);
+
+      // 4. 即時過濾搜尋
       const filtered = allPlaces.filter(p => {
         const matchRegion = currentRegion === 'all' || p.region === currentRegion || (currentRegion.includes('/') && p.region && currentRegion.split('/').includes(p.region));
         const matchCategory = currentCategory === 'all' || p.category === currentCategory;
@@ -832,15 +1003,30 @@
         if (bounds.length > 0) leafletMap.fitBounds(bounds, { padding: [30, 30] });
       }, 200);
 
-      // 6. 景點卡片渲染
+      // 6. 景點卡片渲染 (支援全圖片燈箱與縮圖點擊)
       document.getElementById('places-grid').innerHTML = filtered.map(item => {
         const catObj = categories.find(c => c.name === item.category) || { color: 'bg-indigo-100 text-indigo-800', icon: 'fa-tag' };
         const isVisited = item.status === 'visited';
 
+        // 整理所有圖片 (主圖 + 額外圖片)
+        const allImgs = [];
+        if (item.imageUrl) allImgs.push(item.imageUrl);
+        if (item.extraImages && item.extraImages.length > 0) allImgs.push(...item.extraImages);
+
+        const allImgsJson = JSON.stringify(allImgs).replace(/"/g, '&quot;');
+
         return `
           <div id="card-${item.id}" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between transition-all">
             <div>
-              ${item.imageUrl ? `<img src="${item.imageUrl}" class="w-full h-40 object-cover" alt="${item.title}">` : ''}
+              ${item.imageUrl ? `
+                <div class="relative cursor-pointer group" onclick="openLightbox(${allImgsJson}, 0)">
+                  <img src="${item.imageUrl}" class="w-full h-44 object-cover group-hover:opacity-90 transition" alt="${item.title}">
+                  <span class="absolute bottom-2 right-2 bg-slate-900/70 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm">
+                    <i class="fa-solid fa-expand"></i> 點擊放大 (${allImgs.length}張)
+                  </span>
+                </div>
+              ` : ''}
+
               <div class="p-4 space-y-3">
                 <div class="flex justify-between items-start">
                   <div class="flex flex-wrap items-center gap-1.5">
@@ -853,6 +1039,14 @@
                 </div>
 
                 <h4 class="font-bold text-base text-slate-800">${item.title}</h4>
+
+                ${item.extraImages && item.extraImages.length > 0 ? `
+                  <div class="flex items-center gap-2 overflow-x-auto pt-1 pb-1">
+                    ${item.extraImages.map((img, idx) => `
+                      <img src="${img}" onclick="openLightbox(${allImgsJson}, ${item.imageUrl ? idx + 1 : idx})" class="w-12 h-12 rounded-lg object-cover cursor-pointer border hover:opacity-80 transition flex-shrink-0">
+                    `).join('')}
+                  </div>
+                ` : ''}
 
                 ${item.recommendation ? `
                   <div class="bg-amber-50/80 text-amber-800 text-xs p-2 rounded-xl border border-amber-100/80 flex items-start gap-1.5">
@@ -886,7 +1080,6 @@
     window.setRegion = (r) => { currentRegion = r; renderApp(); };
     window.setCategory = (c) => { currentCategory = c; renderApp(); };
 
-    // Firebase 監聽 全局設定 (區域與類別雲端同步)
     onSnapshot(doc(db, "settings", "app_config"), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -896,7 +1089,6 @@
       }
     });
 
-    // Firebase 監聽 備忘錄內容
     onSnapshot(doc(db, "settings", "memo"), (docSnap) => {
       if (docSnap.exists() && document.activeElement !== memoInput) {
         memoInput.value = docSnap.data().content || '';
@@ -904,19 +1096,16 @@
       }
     });
 
-    // Firebase 監聽 景點
     onSnapshot(collection(db, "places"), (snapshot) => {
       allPlaces = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       renderApp();
     });
 
-    // Firebase 監聽 航班與酒店
     onSnapshot(collection(db, "flight_hotel"), (snapshot) => {
       allFH = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       renderApp();
     });
 
-    // Firebase 監聽 待辦清單
     onSnapshot(collection(db, "todos"), (snapshot) => {
       allTodos = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       allTodos.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
