@@ -13,8 +13,11 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- SortableJS 拖拉排序套件 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
   <style>
-    #map { height: 280px; width: 100%; border-radius: 1rem; z-index: 1; }
+    #map { height: 320px; width: 100%; border-radius: 1rem; z-index: 1; }
     .card-highlight {
       animation: highlight 2s ease-in-out;
     }
@@ -22,6 +25,10 @@
       0% { transform: scale(1); ring: 4px #4f46e5; }
       50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(79, 70, 229, 0.4); }
       100% { transform: scale(1); }
+    }
+    .ghost {
+      opacity: 0.4;
+      background: #e0e7ff !important;
     }
   </style>
 </head>
@@ -40,7 +47,7 @@
     </div>
   </header>
 
-  <!-- 主體內容 (左側邊欄 + 右側主內容區) -->
+  <!-- 主體內容 -->
   <div class="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
 
     <!-- 左側邊欄：主要車站/區域 (跟圖一) -->
@@ -51,7 +58,7 @@
         </h2>
         <div class="flex items-center gap-1">
           <span id="region-count" class="text-xs text-slate-400">共 0 個區域</span>
-          <button onclick="openManageRegionsModal()" class="text-xs text-indigo-600 hover:text-indigo-800 ml-1" title="管理區域">
+          <button onclick="openManageRegionsModal()" class="text-xs text-indigo-600 hover:text-indigo-800 ml-1" title="管理區域與排序">
             <i class="fa-solid fa-gear"></i>
           </button>
         </div>
@@ -79,13 +86,13 @@
         </div>
       </div>
 
-      <!-- 圖二的大地圖區塊 (嵌入於此) -->
-      <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+      <!-- 圖二的大地圖區塊 (採用 Google Maps 圖磚) -->
+      <div id="map-section" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
         <div class="flex justify-between items-center mb-2 px-1">
           <span class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
-            <i class="fa-solid fa-map text-indigo-600"></i> 東京區域地圖總覽
+            <i class="fa-solid fa-map text-indigo-600"></i> 東京區域 Google 地圖總覽
           </span>
-          <span class="text-[10px] text-slate-400">點擊標記預覽名稱</span>
+          <span class="text-[10px] text-slate-400">點擊標記可預覽或快速定位</span>
         </div>
         <div id="map"></div>
       </div>
@@ -117,7 +124,8 @@
       </div>
 
       <form id="place-form" class="p-5 space-y-4 text-sm">
-        <!-- Google Maps 自動解析 -->
+        <input type="hidden" id="edit-id">
+
         <div class="bg-indigo-50/60 p-3 rounded-xl border border-indigo-100">
           <label class="block font-medium text-slate-700 mb-1 text-xs">Google Maps 網址 (貼上長網址可自動抓店名與座標)</label>
           <div class="flex gap-2">
@@ -135,13 +143,11 @@
           <div>
             <label class="block font-medium text-slate-700 mb-1">主要車站/區域 *</label>
             <select id="region-select" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-              <!-- 動態載入區域選項 -->
             </select>
           </div>
           <div>
             <label class="block font-medium text-slate-700 mb-1">類別 *</label>
             <select id="category-select" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-              <!-- 動態載入類別選項 -->
             </select>
           </div>
         </div>
@@ -169,16 +175,16 @@
         <input type="hidden" id="lat">
         <input type="hidden" id="lng">
 
-        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">儲存景點</button>
+        <button type="submit" id="submit-btn" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">儲存景點</button>
       </form>
     </div>
   </div>
 
-  <!-- 彈出視窗：管理區域 Modal -->
+  <!-- 彈出視窗：管理區域 Modal (支援拖拉排序) -->
   <div id="manageRegionsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
       <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="font-bold text-slate-800 text-sm">管理主要車站/區域</h3>
+        <h3 class="font-bold text-slate-800 text-sm">管理區域 (按住 ::: 拖拉排序)</h3>
         <button onclick="closeManageRegionsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
@@ -188,16 +194,16 @@
       </div>
 
       <div id="manage-regions-list" class="space-y-2 max-h-60 overflow-y-auto text-xs">
-        <!-- 動態渲染刪除按鈕 -->
+        <!-- 動態拖拉列表 -->
       </div>
     </div>
   </div>
 
-  <!-- 彈出視窗：管理類別 Modal -->
+  <!-- 彈出視窗：管理類別 Modal (支援拖拉排序) -->
   <div id="manageCategoriesModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
       <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="font-bold text-slate-800 text-sm">管理類別標籤</h3>
+        <h3 class="font-bold text-slate-800 text-sm">管理類別 (按住 ::: 拖拉排序)</h3>
         <button onclick="closeManageCategoriesModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
@@ -207,7 +213,7 @@
       </div>
 
       <div id="manage-cats-list" class="space-y-2 max-h-60 overflow-y-auto text-xs">
-        <!-- 動態渲染刪除類別 -->
+        <!-- 動態拖拉列表 -->
       </div>
     </div>
   </div>
@@ -230,9 +236,8 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 預設區域與類別列表 (跟圖一)
-    let regions = ["新宿", "澀谷", "東京/銀座", "淺草/上野", "原宿/表參道", "秋葉原", "池袋", "六本木", "築地/台場"];
-    let categories = [
+    let regions = JSON.parse(localStorage.getItem('tokyo_regions')) || ["新宿", "澀谷", "東京/銀座", "淺草/上野", "原宿/表參道", "秋葉原", "池袋", "六本木", "築地/台場"];
+    let categories = JSON.parse(localStorage.getItem('tokyo_categories')) || [
       { name: "美食", icon: "fa-utensils", color: "bg-amber-100 text-amber-800" },
       { name: "景點", icon: "fa-torii-gate", color: "bg-emerald-100 text-emerald-800" },
       { name: "咖啡", icon: "fa-mug-hot", color: "bg-stone-100 text-stone-800" },
@@ -243,14 +248,20 @@
     let currentCategory = 'all';
     let allPlaces = [];
     let leafletMap = null;
-    let markersGroup = [];
+    let markersMap = {};
 
-    // 初始化 Leaflet 地圖
+    function saveState() {
+      localStorage.setItem('tokyo_regions', JSON.stringify(regions));
+      localStorage.setItem('tokyo_categories', JSON.stringify(categories));
+    }
+
     function initMap() {
       if (!leafletMap) {
         leafletMap = L.map('map').setView([35.6812, 139.7671], 11);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap'
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          maxZoom: 20,
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+          attribution: 'Google Maps'
         }).addTo(leafletMap);
       }
     }
@@ -258,37 +269,97 @@
     // Modal 控制
     window.openAddModal = () => {
       document.getElementById('place-form').reset();
+      document.getElementById('edit-id').value = '';
+      document.getElementById('modalTitle').innerText = '新增景點 / 食店';
+      document.getElementById('submit-btn').innerText = '儲存景點';
       populateSelects();
       document.getElementById('placeModal').classList.remove('hidden');
     };
+
+    window.openEditModal = (id) => {
+      const item = allPlaces.find(p => p.id === id);
+      if (!item) return;
+
+      populateSelects();
+      document.getElementById('edit-id').value = item.id;
+      document.getElementById('modalTitle').innerText = '編輯景點 / 食店';
+      document.getElementById('submit-btn').innerText = '更新景點';
+
+      document.getElementById('title').value = item.title || '';
+      document.getElementById('region-select').value = item.region || regions[0];
+      document.getElementById('category-select').value = item.category || categories[0].name;
+      document.getElementById('image-url').value = item.imageUrl || '';
+      document.getElementById('recommendation').value = item.recommendation || '';
+      document.getElementById('notes').value = item.notes || '';
+      document.getElementById('nav-link').value = item.navLink || '';
+      document.getElementById('lat').value = item.lat || '';
+      document.getElementById('lng').value = item.lng || '';
+
+      document.getElementById('placeModal').classList.remove('hidden');
+    };
+
     window.closePlaceModal = () => document.getElementById('placeModal').classList.add('hidden');
 
     window.openManageRegionsModal = () => {
       renderManageRegions();
       document.getElementById('manageRegionsModal').classList.remove('hidden');
+      initRegionSortable();
     };
     window.closeManageRegionsModal = () => document.getElementById('manageRegionsModal').classList.add('hidden');
 
     window.openManageCategoriesModal = () => {
       renderManageCategories();
       document.getElementById('manageCategoriesModal').classList.remove('hidden');
+      initCategorySortable();
     };
     window.closeManageCategoriesModal = () => document.getElementById('manageCategoriesModal').classList.add('hidden');
 
-    // 填寫下拉選單
     function populateSelects() {
-      const regSelect = document.getElementById('region-select');
-      regSelect.innerHTML = regions.map(r => `<option value="${r}">${r}</option>`).join('');
-
-      const catSelect = document.getElementById('category-select');
-      catSelect.innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      document.getElementById('region-select').innerHTML = regions.map(r => `<option value="${r}">${r}</option>`).join('');
+      document.getElementById('category-select').innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     }
 
-    // 區域管理 (新增與刪除)
+    function initRegionSortable() {
+      const el = document.getElementById('manage-regions-list');
+      Sortable.create(el, {
+        handle: '.drag-handle',
+        ghostClass: 'ghost',
+        onEnd: () => {
+          const newOrder = [];
+          el.querySelectorAll('[data-region]').forEach(item => {
+            newOrder.push(item.getAttribute('data-region'));
+          });
+          regions = newOrder;
+          saveState();
+          renderApp();
+        }
+      });
+    }
+
+    function initCategorySortable() {
+      const el = document.getElementById('manage-cats-list');
+      Sortable.create(el, {
+        handle: '.drag-handle',
+        ghostClass: 'ghost',
+        onEnd: () => {
+          const newOrder = [];
+          el.querySelectorAll('[data-cat]').forEach(item => {
+            const name = item.getAttribute('data-cat');
+            const found = categories.find(c => c.name === name);
+            if (found) newOrder.push(found);
+          });
+          categories = newOrder;
+          saveState();
+          renderApp();
+        }
+      });
+    }
+
     window.addRegion = () => {
       const val = document.getElementById('new-region-input').value.trim();
       if (val && !regions.includes(val)) {
         regions.push(val);
+        saveState();
         document.getElementById('new-region-input').value = '';
         renderManageRegions();
         renderApp();
@@ -296,26 +367,29 @@
     };
     window.deleteRegion = (r) => {
       regions = regions.filter(item => item !== r);
+      saveState();
       if (currentRegion === r) currentRegion = 'all';
       renderManageRegions();
       renderApp();
     };
 
     function renderManageRegions() {
-      const list = document.getElementById('manage-regions-list');
-      list.innerHTML = regions.map(r => `
-        <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-          <span>${r}</span>
-          <button onclick="deleteRegion('${r}')" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+      document.getElementById('manage-regions-list').innerHTML = regions.map(r => `
+        <div data-region="${r}" class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-grip-vertical text-slate-300 drag-handle cursor-grab hover:text-slate-600"></i>
+            <span class="font-medium text-slate-700">${r}</span>
+          </div>
+          <button onclick="deleteRegion('${r}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       `).join('');
     }
 
-    // 類別管理 (新增與刪除)
     window.addCategory = () => {
       const val = document.getElementById('new-cat-input').value.trim();
       if (val && !categories.some(c => c.name === val)) {
         categories.push({ name: val, icon: "fa-tag", color: "bg-blue-100 text-blue-800" });
+        saveState();
         document.getElementById('new-cat-input').value = '';
         renderManageCategories();
         renderApp();
@@ -323,35 +397,36 @@
     };
     window.deleteCategory = (name) => {
       categories = categories.filter(c => c.name !== name);
+      saveState();
       if (currentCategory === name) currentCategory = 'all';
       renderManageCategories();
       renderApp();
     };
 
     function renderManageCategories() {
-      const list = document.getElementById('manage-cats-list');
-      list.innerHTML = categories.map(c => `
-        <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-          <span>${c.name}</span>
-          <button onclick="deleteCategory('${c.name}')" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+      document.getElementById('manage-cats-list').innerHTML = categories.map(c => `
+        <div data-cat="${c.name}" class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-grip-vertical text-slate-300 drag-handle cursor-grab hover:text-slate-600"></i>
+            <span class="font-medium text-slate-700">${c.name}</span>
+          </div>
+          <button onclick="deleteCategory('${c.name}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       `).join('');
     }
 
-    // 切換打卡狀態
-    window.toggleCheck = async (id, currentStatus) => {
-      const newStatus = currentStatus === 'visited' ? 'unvisited' : 'visited';
-      await updateDoc(doc(db, "places", id), { status: newStatus });
-    };
+    window.focusOnMap = (id, lat, lng) => {
+      const mapSection = document.getElementById('map-section');
+      mapSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // 刪除地點
-    window.deletePlace = async (id) => {
-      if (confirm("確定要刪除這個地點嗎？")) {
-        await deleteDoc(doc(db, "places", id));
+      if (lat && lng && leafletMap) {
+        leafletMap.setView([lat, lng], 15, { animate: true });
+        if (markersMap[id]) {
+          markersMap[id].openPopup();
+        }
       }
     };
 
-    // 捲動至卡片高亮
     window.scrollToCard = (id) => {
       const card = document.getElementById(`card-${id}`);
       if (card) {
@@ -361,7 +436,17 @@
       }
     };
 
-    // 解析 Google Maps 網址
+    window.toggleCheck = async (id, currentStatus) => {
+      const newStatus = currentStatus === 'visited' ? 'unvisited' : 'visited';
+      await updateDoc(doc(db, "places", id), { status: newStatus });
+    };
+
+    window.deletePlace = async (id) => {
+      if (confirm("確定要刪除這個地點嗎？")) {
+        await deleteDoc(doc(db, "places", id));
+      }
+    };
+
     document.getElementById('parse-btn').addEventListener('click', () => {
       const url = document.getElementById('map-url').value;
       if (!url) return alert('請先貼上網址！');
@@ -379,10 +464,11 @@
       document.getElementById('nav-link').value = url;
     });
 
-    // 儲存地點至 Firebase
     document.getElementById('place-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const newPlace = {
+      const editId = document.getElementById('edit-id').value;
+
+      const placeData = {
         title: document.getElementById('title').value,
         region: document.getElementById('region-select').value,
         category: document.getElementById('category-select').value,
@@ -392,27 +478,32 @@
         navLink: document.getElementById('nav-link').value,
         lat: parseFloat(document.getElementById('lat').value) || null,
         lng: parseFloat(document.getElementById('lng').value) || null,
-        status: 'unvisited',
-        createdAt: new Date()
       };
 
-      await addDoc(collection(db, "places"), newPlace);
+      if (editId) {
+        // 更新原有資料
+        await updateDoc(doc(db, "places", editId), placeData);
+      } else {
+        // 新增新資料
+        placeData.status = 'unvisited';
+        placeData.createdAt = new Date();
+        await addDoc(collection(db, "places"), placeData);
+      }
+
       closePlaceModal();
     });
 
-    // 渲染整個 UI 應用程式
     function renderApp() {
       const searchKeyword = document.getElementById('search-input').value.toLowerCase();
 
-      // 1. 渲染左側區域列表 (跟圖一)
+      // 1. 區域列表
       const regList = document.getElementById('region-list');
       document.getElementById('region-count').innerText = `共 ${regions.length} 個區域`;
       
-      const allCount = allPlaces.length;
       let regHTML = `
         <button onclick="setRegion('all')" class="w-full flex justify-between items-center px-3 py-2 rounded-xl text-xs font-medium transition ${currentRegion === 'all' ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
           <span>全部</span>
-          <span class="${currentRegion === 'all' ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-500'} px-2 py-0.5 rounded-full text-[10px]">${allCount}</span>
+          <span class="${currentRegion === 'all' ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-500'} px-2 py-0.5 rounded-full text-[10px]">${allPlaces.length}</span>
         </button>
       `;
 
@@ -428,7 +519,7 @@
       });
       regList.innerHTML = regHTML;
 
-      // 2. 渲染頂部類別標籤 (跟圖一)
+      // 2. 類別頁籤
       const catTabs = document.getElementById('category-tabs');
       let catHTML = `
         <button onclick="setCategory('all')" class="px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${currentCategory === 'all' ? 'bg-[#4f46e5] text-white' : 'bg-white text-slate-600 border border-slate-200'}">全部</button>
@@ -447,7 +538,7 @@
       `;
       catTabs.innerHTML = catHTML;
 
-      // 3. 篩選地點列表
+      // 3. 篩選資料
       const filtered = allPlaces.filter(p => {
         const matchRegion = currentRegion === 'all' || p.region === currentRegion;
         const matchCategory = currentCategory === 'all' || p.category === currentCategory;
@@ -461,10 +552,10 @@
       document.getElementById('current-region-label').innerText = currentRegion === 'all' ? '全部車站' : currentRegion;
       document.getElementById('places-count').innerText = `共 ${filtered.length} 個地點`;
 
-      // 4. 更新 Leaflet 地圖標記
+      // 4. 地圖 Marker 渲染
       initMap();
-      markersGroup.forEach(m => leafletMap.removeLayer(m));
-      markersGroup = [];
+      Object.values(markersMap).forEach(m => leafletMap.removeLayer(m));
+      markersMap = {};
       const bounds = [];
 
       filtered.forEach(item => {
@@ -475,12 +566,12 @@
               <div class="font-bold text-xs text-slate-800 mb-0.5">${item.title}</div>
               <div class="text-[10px] text-slate-500 mb-2">📍 ${item.region} | ${item.category}</div>
               <button onclick="scrollToCard('${item.id}')" class="bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-md hover:bg-indigo-700 transition">
-                👇 查看詳情
+                👇 查看卡片
               </button>
             </div>
           `;
           marker.bindPopup(popupContent);
-          markersGroup.push(marker);
+          markersMap[item.id] = marker;
           bounds.push([item.lat, item.lng]);
         }
       });
@@ -490,7 +581,7 @@
         if (bounds.length > 0) leafletMap.fitBounds(bounds, { padding: [30, 30] });
       }, 200);
 
-      // 5. 渲染地點卡片 (跟圖一風格)
+      // 5. 卡片渲染 (已加上編輯按鈕)
       const grid = document.getElementById('places-grid');
       grid.innerHTML = filtered.map(item => {
         const catObj = categories.find(c => c.name === item.category) || { color: 'bg-indigo-100 text-indigo-800', icon: 'fa-tag' };
@@ -508,7 +599,6 @@
                     </span>
                     <span class="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-100 text-slate-600">${item.region}</span>
                   </div>
-                  <!-- 打卡狀態按鈕 -->
                   <button onclick="toggleCheck('${item.id}', '${item.status}')" class="text-xs font-semibold px-2.5 py-1 rounded-full border transition ${isVisited ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}">
                     <i class="fa-regular ${isVisited ? 'fa-circle-check' : 'fa-circle'}"></i> ${isVisited ? '已打卡' : '未打卡'}
                   </button>
@@ -532,9 +622,8 @@
               </div>
             </div>
 
-            <!-- 卡片底欄按鈕 -->
             <div class="p-4 pt-0 flex justify-between items-center text-xs text-slate-500 border-t border-slate-50 pt-3 mt-2">
-              <button onclick="scrollToCard('${item.id}')" class="text-indigo-600 font-medium flex items-center gap-1 hover:underline">
+              <button onclick="focusOnMap('${item.id}', ${item.lat}, ${item.lng})" class="text-indigo-600 font-medium flex items-center gap-1 hover:underline">
                 <i class="fa-solid fa-map-pin"></i> 顯示地圖
               </button>
               <div class="flex items-center gap-3">
@@ -543,7 +632,12 @@
                     <i class="fa-solid fa-location-arrow"></i> 導航
                   </a>
                 ` : ''}
-                <button onclick="deletePlace('${item.id}')" class="text-slate-300 hover:text-red-500">
+                <!-- 編輯按鈕 -->
+                <button onclick="openEditModal('${item.id}')" class="text-slate-400 hover:text-indigo-600" title="編輯地點">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <!-- 刪除按鈕 -->
+                <button onclick="deletePlace('${item.id}')" class="text-slate-300 hover:text-red-500" title="刪除地點">
                   <i class="fa-solid fa-trash-can"></i>
                 </button>
               </div>
@@ -556,18 +650,6 @@
     window.setRegion = (r) => { currentRegion = r; renderApp(); };
     window.setCategory = (c) => { currentCategory = c; renderApp(); };
 
-    // 匯出 JSON 資料
-    window.exportData = () => {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allPlaces));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", "tokyo_travel_places.json");
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    };
-
-    // 監聽 Firebase 資料
     onSnapshot(collection(db, "places"), (snapshot) => {
       allPlaces = snapshot.docs.map(docSnap => ({
         id: docSnap.id,
