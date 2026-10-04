@@ -3,103 +3,131 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>日本旅遊行程地圖</title>
+  <title>東京自由行地圖筆記</title>
   
-  <!-- Tailwind CSS & Lucide Icons -->
+  <!-- Tailwind CSS & FontAwesome -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <!-- Leaflet 地圖套件 -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    #region-map { height: 320px; width: 100%; border-radius: 1rem; z-index: 1; }
+    #map { height: 280px; width: 100%; border-radius: 1rem; z-index: 1; }
     .card-highlight {
       animation: highlight 2s ease-in-out;
     }
     @keyframes highlight {
       0% { transform: scale(1); ring: 4px #4f46e5; }
-      50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(79, 70, 229, 0.4); }
+      50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(79, 70, 229, 0.4); }
       100% { transform: scale(1); }
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen pb-20">
+<body class="bg-[#f3f4f6] text-slate-800 font-sans min-h-screen">
 
-  <!-- 頂部導覽列 -->
-  <header class="bg-indigo-600 text-white shadow-lg sticky top-0 z-40">
-    <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
-      <div class="flex items-center gap-2">
-        <i data-lucide="map-pin" class="w-6 h-6"></i>
-        <h1 class="text-lg font-bold">日本行程隨身手冊</h1>
-      </div>
-      <button onclick="openModal()" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl text-sm font-medium backdrop-blur-sm flex items-center gap-1.5 border border-white/20 transition">
-        <i data-lucide="plus" class="w-4 h-4"></i> 新增地點
+  <!-- 頂部藍紫色 Header (跟圖一) -->
+  <header class="bg-[#4f46e5] text-white px-6 py-3 shadow-md flex justify-between items-center sticky top-0 z-40">
+    <div class="flex items-center gap-2">
+      <i class="fa-regular fa-compass text-xl"></i>
+      <h1 class="text-lg font-bold">東京自由行地圖筆記</h1>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="openAddModal()" class="bg-[#facc15] hover:bg-yellow-400 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-sm transition">
+        <i class="fa-solid fa-circle-plus"></i> 新增景點/食店
+      </button>
+      <button onclick="exportData()" class="bg-indigo-700 hover:bg-indigo-800 text-xs px-3 py-1.5 rounded-lg border border-indigo-500 flex items-center gap-1">
+        <i class="fa-solid fa-download"></i> 匯出
+      </button>
+      <button onclick="importData()" class="bg-indigo-700 hover:bg-indigo-800 text-xs px-3 py-1.5 rounded-lg border border-indigo-500 flex items-center gap-1">
+        <i class="fa-solid fa-upload"></i> 匯入
       </button>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+  <!-- 主體內容 (左側邊欄 + 右側主內容區) -->
+  <div class="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
 
-    <!-- 區域選擇頁籤 (例如：全部、東京、大阪...) -->
-    <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar" id="region-tabs">
-      <button onclick="filterRegion('all')" id="tab-all" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-indigo-600 text-white shadow-sm transition">
-        🌏 全部地點
-      </button>
-      <button onclick="filterRegion('東京')" id="tab-東京" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-white text-slate-600 hover:bg-slate-100 shadow-sm transition">
-        🗼 東京
-      </button>
-      <button onclick="filterRegion('關西')" id="tab-關西" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-white text-slate-600 hover:bg-slate-100 shadow-sm transition">
-        🏯 關西 / 京都大阪
-      </button>
-    </div>
-
-    <!-- 類別篩選 (美食、景點、購物等) -->
-    <div class="flex gap-2 overflow-x-auto pb-1" id="category-tabs">
-      <button onclick="filterCategory('all')" class="cat-btn bg-slate-200 text-slate-700 px-3 py-1 rounded-lg text-xs font-medium">全部類別</button>
-      <button onclick="filterCategory('美食')" class="cat-btn bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-medium border">🍜 美食</button>
-      <button onclick="filterCategory('景點')" class="cat-btn bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-medium border">⛩️ 景點</button>
-      <button onclick="filterCategory('購物')" class="cat-btn bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-medium border">🛍️ 購物</button>
-      <button onclick="filterCategory('住宿')" class="cat-btn bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-medium border">🏨 住宿</button>
-    </div>
-
-    <!-- 動態大地圖區塊（預設隱藏，只有選擇特定區域如「東京」才會出現於頂部） -->
-    <div id="map-container" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 hidden">
-      <div class="flex justify-between items-center mb-2 px-1">
-        <span id="map-title" class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-          <i data-lucide="map" class="w-4 h-4 text-indigo-600"></i> 區域地圖總覽
-        </span>
-        <span class="text-[10px] text-slate-400">點擊標記預覽名稱</span>
+    <!-- 左側邊欄：主要車站/區域 (跟圖一) -->
+    <aside class="md:col-span-1 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 h-fit">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
+          <i class="fa-solid fa-map-location-dot text-indigo-600"></i> 主要車站/區域
+        </h2>
+        <div class="flex items-center gap-1">
+          <span id="region-count" class="text-xs text-slate-400">共 0 個區域</span>
+          <button onclick="openManageRegionsModal()" class="text-xs text-indigo-600 hover:text-indigo-800 ml-1" title="管理區域">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+        </div>
       </div>
-      <div id="region-map"></div>
-    </div>
 
-    <!-- 地點列表 -->
-    <div id="places-list" class="space-y-4">
-      <!-- 卡片由 JS 動態生成 -->
-    </div>
+      <nav id="region-list" class="space-y-1">
+        <!-- 動態渲染區域列表 -->
+      </nav>
+    </aside>
 
-  </main>
+    <!-- 右側主內容區 -->
+    <main class="md:col-span-3 space-y-5">
 
-  <!-- 新增/編輯地點 彈出視窗 (Modal) -->
+      <!-- 上方搜尋列與分類標籤 (跟圖一) -->
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <!-- 搜尋列 -->
+        <div class="relative w-full md:w-80">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+          <input type="text" id="search-input" oninput="renderApp()" placeholder="搜尋名稱、類別或備註..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+        </div>
+
+        <!-- 分類標籤頁籤 -->
+        <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1" id="category-tabs">
+          <!-- 動態渲染類別頁籤 -->
+        </div>
+      </div>
+
+      <!-- 圖二的大地圖區塊 (嵌入於此) -->
+      <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+        <div class="flex justify-between items-center mb-2 px-1">
+          <span class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+            <i class="fa-solid fa-map text-indigo-600"></i> 東京區域地圖總覽
+          </span>
+          <span class="text-[10px] text-slate-400">點擊標記預覽名稱</span>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <!-- 目前區域提示列 -->
+      <div class="flex justify-between items-center">
+        <h3 class="text-sm font-bold text-slate-700 flex items-center gap-1">
+          目前區域：<span id="current-region-label" class="text-indigo-600">全部車站</span>
+        </h3>
+        <span id="places-count" class="text-xs text-slate-400">共 0 個地點</span>
+      </div>
+
+      <!-- 地點列表（兩欄式卡片佈局，跟圖一） -->
+      <div id="places-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- 動態渲染卡片 -->
+      </div>
+
+    </main>
+  </div>
+
+  <!-- 彈出視窗：新增/編輯地點 Modal -->
   <div id="placeModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
       <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
-        <h3 id="modalTitle" class="font-bold text-slate-800 flex items-center gap-1.5">
-          <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-600"></i> 新增地點
-        </h3>
-        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-          <i data-lucide="x" class="w-5 h-5"></i>
+        <h3 id="modalTitle" class="font-bold text-slate-800 text-sm">新增景點 / 食店</h3>
+        <button onclick="closePlaceModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
 
-      <form id="add-form" class="p-5 space-y-4 text-sm">
-        <!-- 網址解析區 -->
-        <div class="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
-          <label class="block font-medium text-slate-700 mb-1 text-xs">Google Maps 網址 (自動解析店名/車站)</label>
+      <form id="place-form" class="p-5 space-y-4 text-sm">
+        <!-- Google Maps 自動解析 -->
+        <div class="bg-indigo-50/60 p-3 rounded-xl border border-indigo-100">
+          <label class="block font-medium text-slate-700 mb-1 text-xs">Google Maps 網址 (貼上長網址可自動抓店名與座標)</label>
           <div class="flex gap-2">
-            <input type="url" id="map-url" placeholder="貼上完整 Google Maps 網址" class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="url" id="map-url" placeholder="https://www.google.com/maps/place/..." class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
             <button type="button" id="parse-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700">解析</button>
           </div>
         </div>
@@ -111,51 +139,90 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-medium text-slate-700 mb-1">大區域 (例如：東京)</label>
-            <input type="text" id="region" required placeholder="東京" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">車站 / 細區 *</label>
-            <input type="text" id="station" required placeholder="新宿" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">類別 *</label>
-            <select id="category" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-              <option value="美食">🍜 美食</option>
-              <option value="景點">⛩️ 景點</option>
-              <option value="購物">🛍️ 購物</option>
-              <option value="住宿">🏨 住宿</option>
-              <option value="其他">📌 其他</option>
+            <label class="block font-medium text-slate-700 mb-1">主要車站/區域 *</label>
+            <select id="region-select" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              <!-- 動態載入區域選項 -->
             </select>
           </div>
           <div>
-            <label class="block font-medium text-slate-700 mb-1">導航連結</label>
-            <input type="url" id="nav-link" placeholder="短網址或長網址" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+            <label class="block font-medium text-slate-700 mb-1">類別 *</label>
+            <select id="category-select" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              <!-- 動態載入類別選項 -->
+            </select>
           </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">圖片網址 (可留空)</label>
+          <input type="url" id="image-url" placeholder="https://..." class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">推介 / 必食內容</label>
+          <input type="text" id="recommendation" placeholder="例如：魚介雞白湯沾麵" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">備註 / 簡介</label>
+          <textarea id="notes" rows="2" placeholder="例如：人氣排隊名店，只收現金..." class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Google Maps 導航連結</label>
+          <input type="url" id="nav-link" placeholder="導航連結" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
 
         <input type="hidden" id="lat">
         <input type="hidden" id="lng">
 
-        <div>
-          <label class="block font-medium text-slate-700 mb-1">備註 / 營業時間</label>
-          <textarea id="notes" rows="2" placeholder="例如：11:00-22:00，必食清單" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-        </div>
-
-        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium shadow-md shadow-indigo-100 hover:bg-indigo-700 transition">儲存地點</button>
+        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">儲存景點</button>
       </form>
+    </div>
+  </div>
+
+  <!-- 彈出視窗：管理區域 Modal -->
+  <div id="manageRegionsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-sm">管理主要車站/區域</h3>
+        <button onclick="closeManageRegionsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="flex gap-2">
+        <input type="text" id="new-region-input" placeholder="輸入新區域 (如：六本木)" class="flex-1 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+        <button onclick="addRegion()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-indigo-700">新增</button>
+      </div>
+
+      <div id="manage-regions-list" class="space-y-2 max-h-60 overflow-y-auto text-xs">
+        <!-- 動態渲染刪除按鈕 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈出視窗：管理類別 Modal -->
+  <div id="manageCategoriesModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-sm">管理類別標籤</h3>
+        <button onclick="closeManageCategoriesModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="flex gap-2">
+        <input type="text" id="new-cat-input" placeholder="輸入新類別 (如：咖啡)" class="flex-1 p-2 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+        <button onclick="addCategory()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-indigo-700">新增</button>
+      </div>
+
+      <div id="manage-cats-list" class="space-y-2 max-h-60 overflow-y-auto text-xs">
+        <!-- 動態渲染刪除類別 -->
+      </div>
     </div>
   </div>
 
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 使用你提供的 Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
       authDomain: "tokyo-travel-2026-9a82e.firebaseapp.com",
@@ -169,6 +236,15 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // 預設區域與類別列表 (跟圖一)
+    let regions = ["新宿", "澀谷", "東京/銀座", "淺草/上野", "原宿/表參道", "秋葉原", "池袋", "六本木", "築地/台場"];
+    let categories = [
+      { name: "美食", icon: "fa-utensils", color: "bg-amber-100 text-amber-800" },
+      { name: "景點", icon: "fa-torii-gate", color: "bg-emerald-100 text-emerald-800" },
+      { name: "咖啡", icon: "fa-mug-hot", color: "bg-stone-100 text-stone-800" },
+      { name: "購物", icon: "fa-bag-shopping", color: "bg-pink-100 text-pink-800" }
+    ];
+
     let currentRegion = 'all';
     let currentCategory = 'all';
     let allPlaces = [];
@@ -178,7 +254,7 @@
     // 初始化 Leaflet 地圖
     function initMap() {
       if (!leafletMap) {
-        leafletMap = L.map('region-map').setView([35.6812, 139.7671], 11);
+        leafletMap = L.map('map').setView([35.6812, 139.7671], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap'
         }).addTo(leafletMap);
@@ -186,36 +262,92 @@
     }
 
     // Modal 控制
-    window.openModal = () => document.getElementById('placeModal').classList.remove('hidden');
-    window.closeModal = () => document.getElementById('placeModal').classList.add('hidden');
-
-    // 區域與類別過濾邏輯
-    window.filterRegion = (region) => {
-      currentRegion = region;
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.className = 'tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-white text-slate-600 hover:bg-slate-100 shadow-sm transition';
-      });
-      const activeTab = document.getElementById(`tab-${region}`) || document.getElementById('tab-all');
-      if (activeTab) activeTab.className = 'tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-indigo-600 text-white shadow-sm transition';
-
-      renderPlaces();
+    window.openAddModal = () => {
+      document.getElementById('place-form').reset();
+      populateSelects();
+      document.getElementById('placeModal').classList.remove('hidden');
     };
+    window.closePlaceModal = () => document.getElementById('placeModal').classList.add('hidden');
 
-    window.filterCategory = (cat) => {
-      currentCategory = cat;
-      renderPlaces();
+    window.openManageRegionsModal = () => {
+      renderManageRegions();
+      document.getElementById('manageRegionsModal').classList.remove('hidden');
     };
+    window.closeManageRegionsModal = () => document.getElementById('manageRegionsModal').classList.add('hidden');
 
-    // 捲動至卡片並高亮
-    window.scrollToCard = (id) => {
-      const card = document.getElementById(`card-${id}`);
-      if (card) {
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        card.classList.add('card-highlight', 'ring-4', 'ring-indigo-500');
-        setTimeout(() => {
-          card.classList.remove('card-highlight', 'ring-4', 'ring-indigo-500');
-        }, 2000);
+    window.openManageCategoriesModal = () => {
+      renderManageCategories();
+      document.getElementById('manageCategoriesModal').classList.remove('hidden');
+    };
+    window.closeManageCategoriesModal = () => document.getElementById('manageCategoriesModal').classList.add('hidden');
+
+    // 填寫下拉選單
+    function populateSelects() {
+      const regSelect = document.getElementById('region-select');
+      regSelect.innerHTML = regions.map(r => `<option value="${r}">${r}</option>`).join('');
+
+      const catSelect = document.getElementById('category-select');
+      catSelect.innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+
+    // 區域管理 (新增與刪除)
+    window.addRegion = () => {
+      const val = document.getElementById('new-region-input').value.trim();
+      if (val && !regions.includes(val)) {
+        regions.push(val);
+        document.getElementById('new-region-input').value = '';
+        renderManageRegions();
+        renderApp();
       }
+    };
+    window.deleteRegion = (r) => {
+      regions = regions.filter(item => item !== r);
+      if (currentRegion === r) currentRegion = 'all';
+      renderManageRegions();
+      renderApp();
+    };
+
+    function renderManageRegions() {
+      const list = document.getElementById('manage-regions-list');
+      list.innerHTML = regions.map(r => `
+        <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
+          <span>${r}</span>
+          <button onclick="deleteRegion('${r}')" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      `).join('');
+    }
+
+    // 類別管理 (新增與刪除)
+    window.addCategory = () => {
+      const val = document.getElementById('new-cat-input').value.trim();
+      if (val && !categories.some(c => c.name === val)) {
+        categories.push({ name: val, icon: "fa-tag", color: "bg-blue-100 text-blue-800" });
+        document.getElementById('new-cat-input').value = '';
+        renderManageCategories();
+        renderApp();
+      }
+    };
+    window.deleteCategory = (name) => {
+      categories = categories.filter(c => c.name !== name);
+      if (currentCategory === name) currentCategory = 'all';
+      renderManageCategories();
+      renderApp();
+    };
+
+    function renderManageCategories() {
+      const list = document.getElementById('manage-cats-list');
+      list.innerHTML = categories.map(c => `
+        <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
+          <span>${c.name}</span>
+          <button onclick="deleteCategory('${c.name}')" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      `).join('');
+    }
+
+    // 切換打卡狀態
+    window.toggleCheck = async (id, currentStatus) => {
+      const newStatus = currentStatus === 'visited' ? 'unvisited' : 'visited';
+      await updateDoc(doc(db, "places", id), { status: newStatus });
     };
 
     // 刪除地點
@@ -225,7 +357,17 @@
       }
     };
 
-    // 網址解析
+    // 捲動至卡片高亮
+    window.scrollToCard = (id) => {
+      const card = document.getElementById(`card-${id}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('card-highlight');
+        setTimeout(() => card.classList.remove('card-highlight'), 2000);
+      }
+    };
+
+    // 解析 Google Maps 網址
     document.getElementById('parse-btn').addEventListener('click', () => {
       const url = document.getElementById('map-url').value;
       if (!url) return alert('請先貼上網址！');
@@ -241,113 +383,195 @@
         document.getElementById('lng').value = coordMatch[2];
       }
       document.getElementById('nav-link').value = url;
-      if (!document.getElementById('region').value) document.getElementById('region').value = "東京";
     });
 
-    // 表單提交
-    document.getElementById('add-form').addEventListener('submit', async (e) => {
+    // 儲存地點至 Firebase
+    document.getElementById('place-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const newPlace = {
         title: document.getElementById('title').value,
-        region: document.getElementById('region').value || "東京",
-        station: document.getElementById('station').value,
-        category: document.getElementById('category').value,
-        navLink: document.getElementById('nav-link').value,
+        region: document.getElementById('region-select').value,
+        category: document.getElementById('category-select').value,
+        imageUrl: document.getElementById('image-url').value,
+        recommendation: document.getElementById('recommendation').value,
         notes: document.getElementById('notes').value,
+        navLink: document.getElementById('nav-link').value,
         lat: parseFloat(document.getElementById('lat').value) || null,
         lng: parseFloat(document.getElementById('lng').value) || null,
+        status: 'unvisited',
         createdAt: new Date()
       };
 
       await addDoc(collection(db, "places"), newPlace);
-      document.getElementById('add-form').reset();
-      closeModal();
+      closePlaceModal();
     });
 
-    // 渲染資料與地圖
-    function renderPlaces() {
-      const listEl = document.getElementById('places-list');
-      listEl.innerHTML = '';
+    // 渲染整個 UI 應用程式
+    function renderApp() {
+      const searchKeyword = document.getElementById('search-input').value.toLowerCase();
 
-      // 篩選資料
-      const filtered = allPlaces.filter(item => {
-        const matchRegion = (currentRegion === 'all') || (item.region === currentRegion) || (currentRegion === '東京' && (!item.region || item.region.includes('東京')));
-        const matchCat = (currentCategory === 'all') || (item.category === currentCategory);
-        return matchRegion && matchCat;
+      // 1. 渲染左側區域列表 (跟圖一)
+      const regList = document.getElementById('region-list');
+      document.getElementById('region-count').innerText = `共 ${regions.length} 個區域`;
+      
+      const allCount = allPlaces.length;
+      let regHTML = `
+        <button onclick="setRegion('all')" class="w-full flex justify-between items-center px-3 py-2 rounded-xl text-xs font-medium transition ${currentRegion === 'all' ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
+          <span>全部</span>
+          <span class="${currentRegion === 'all' ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-500'} px-2 py-0.5 rounded-full text-[10px]">${allCount}</span>
+        </button>
+      `;
+
+      regions.forEach(r => {
+        const count = allPlaces.filter(p => p.region === r).length;
+        const active = currentRegion === r;
+        regHTML += `
+          <button onclick="setRegion('${r}')" class="w-full flex justify-between items-center px-3 py-2 rounded-xl text-xs font-medium transition ${active ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
+            <span>${r}</span>
+            <span class="${active ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-400'} px-2 py-0.5 rounded-full text-[10px]">${count}</span>
+          </button>
+        `;
+      });
+      regList.innerHTML = regHTML;
+
+      // 2. 渲染頂部類別標籤 (跟圖一)
+      const catTabs = document.getElementById('category-tabs');
+      let catHTML = `
+        <button onclick="setCategory('all')" class="px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${currentCategory === 'all' ? 'bg-[#4f46e5] text-white' : 'bg-white text-slate-600 border border-slate-200'}">全部</button>
+      `;
+      categories.forEach(c => {
+        const active = currentCategory === c.name;
+        catHTML += `
+          <button onclick="setCategory('${c.name}')" class="px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap flex items-center gap-1 ${active ? 'bg-[#4f46e5] text-white' : 'bg-white text-slate-600 border border-slate-200'}">
+            <span>${c.name}</span>
+            <i class="fa-solid ${c.icon} text-[10px]"></i>
+          </button>
+        `;
+      });
+      catHTML += `
+        <button onclick="openManageCategoriesModal()" class="text-xs text-indigo-600 hover:text-indigo-800 px-2" title="管理類別"><i class="fa-solid fa-gear"></i></button>
+      `;
+      catTabs.innerHTML = catHTML;
+
+      // 3. 篩選地點列表
+      const filtered = allPlaces.filter(p => {
+        const matchRegion = currentRegion === 'all' || p.region === currentRegion;
+        const matchCategory = currentCategory === 'all' || p.category === currentCategory;
+        const matchSearch = !searchKeyword || 
+          p.title?.toLowerCase().includes(searchKeyword) || 
+          p.notes?.toLowerCase().includes(searchKeyword) || 
+          p.category?.toLowerCase().includes(searchKeyword);
+        return matchRegion && matchCategory && matchSearch;
       });
 
-      // 控制地圖顯示邏輯：當選擇了非 'all' 的區域（如選擇「東京」）時顯示大地圖
-      const mapContainer = document.getElementById('map-container');
-      if (currentRegion !== 'all') {
-        mapContainer.classList.remove('hidden');
-        document.getElementById('map-title').innerText = `🗺️ ${currentRegion} 區域地圖總覽`;
-        initMap();
+      document.getElementById('current-region-label').innerText = currentRegion === 'all' ? '全部車站' : currentRegion;
+      document.getElementById('places-count').innerText = `共 ${filtered.length} 個地點`;
 
-        // 重繪地圖標記
-        markersGroup.forEach(m => leafletMap.removeLayer(m));
-        markersGroup = [];
-        const bounds = [];
+      // 4. 更新 Leaflet 地圖標記
+      initMap();
+      markersGroup.forEach(m => leafletMap.removeLayer(m));
+      markersGroup = [];
+      const bounds = [];
 
-        filtered.forEach(item => {
-          if (item.lat && item.lng) {
-            const marker = L.marker([item.lat, item.lng]).addTo(leafletMap);
-            
-            // 點擊 Pin 彈出名稱與詳情按鈕
-            const popupContent = `
-              <div class="p-1 text-center font-sans">
-                <div class="font-bold text-xs text-slate-800 mb-0.5">${item.title}</div>
-                <div class="text-[10px] text-slate-500 mb-2">📍 ${item.station} | ${item.category}</div>
-                <button onclick="scrollToCard('${item.id}')" class="bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-md hover:bg-indigo-700 transition">
-                  👇 查看詳情
+      filtered.forEach(item => {
+        if (item.lat && item.lng) {
+          const marker = L.marker([item.lat, item.lng]).addTo(leafletMap);
+          const popupContent = `
+            <div class="p-1 text-center font-sans">
+              <div class="font-bold text-xs text-slate-800 mb-0.5">${item.title}</div>
+              <div class="text-[10px] text-slate-500 mb-2">📍 ${item.region} | ${item.category}</div>
+              <button onclick="scrollToCard('${item.id}')" class="bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-md hover:bg-indigo-700 transition">
+                👇 查看詳情
+              </button>
+            </div>
+          `;
+          marker.bindPopup(popupContent);
+          markersGroup.push(marker);
+          bounds.push([item.lat, item.lng]);
+        }
+      });
+
+      setTimeout(() => {
+        leafletMap.invalidateSize();
+        if (bounds.length > 0) leafletMap.fitBounds(bounds, { padding: [30, 30] });
+      }, 200);
+
+      // 5. 渲染地點卡片 (跟圖一風格)
+      const grid = document.getElementById('places-grid');
+      grid.innerHTML = filtered.map(item => {
+        const catObj = categories.find(c => c.name === item.category) || { color: 'bg-indigo-100 text-indigo-800', icon: 'fa-tag' };
+        const isVisited = item.status === 'visited';
+
+        return `
+          <div id="card-${item.id}" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between transition-all">
+            <div>
+              ${item.imageUrl ? `<img src="${item.imageUrl}" class="w-full h-40 object-cover" alt="${item.title}">` : ''}
+              <div class="p-4 space-y-3">
+                <div class="flex justify-between items-start">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="text-[11px] px-2 py-0.5 rounded-md font-bold ${catObj.color} flex items-center gap-1">
+                      ${item.category} <i class="fa-solid ${catObj.icon}"></i>
+                    </span>
+                    <span class="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-100 text-slate-600">${item.region}</span>
+                  </div>
+                  <!-- 打卡狀態按鈕 -->
+                  <button onclick="toggleCheck('${item.id}', '${item.status}')" class="text-xs font-semibold px-2.5 py-1 rounded-full border transition ${isVisited ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}">
+                    <i class="fa-regular ${isVisited ? 'fa-circle-check' : 'fa-circle'}"></i> ${isVisited ? '已打卡' : '未打卡'}
+                  </button>
+                </div>
+
+                <h4 class="font-bold text-base text-slate-800">${item.title}</h4>
+
+                ${item.recommendation ? `
+                  <div class="bg-amber-50/80 text-amber-800 text-xs p-2 rounded-xl border border-amber-100/80 flex items-start gap-1.5">
+                    <i class="fa-solid fa-utensils text-amber-600 mt-0.5"></i>
+                    <span><strong>推介：</strong>${item.recommendation}</span>
+                  </div>
+                ` : ''}
+
+                ${item.notes ? `
+                  <div class="text-xs text-slate-500 flex items-start gap-1.5">
+                    <i class="fa-regular fa-file-lines text-slate-400 mt-0.5"></i>
+                    <span>${item.notes}</span>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- 卡片底欄按鈕 -->
+            <div class="p-4 pt-0 flex justify-between items-center text-xs text-slate-500 border-t border-slate-50 pt-3 mt-2">
+              <button onclick="scrollToCard('${item.id}')" class="text-indigo-600 font-medium flex items-center gap-1 hover:underline">
+                <i class="fa-solid fa-map-pin"></i> 顯示地圖
+              </button>
+              <div class="flex items-center gap-3">
+                ${item.navLink ? `
+                  <a href="${item.navLink}" target="_blank" class="text-slate-600 font-medium hover:text-indigo-600 flex items-center gap-1">
+                    <i class="fa-solid fa-location-arrow"></i> 導航
+                  </a>
+                ` : ''}
+                <button onclick="deletePlace('${item.id}')" class="text-slate-300 hover:text-red-500">
+                  <i class="fa-solid fa-trash-can"></i>
                 </button>
               </div>
-            `;
-            marker.bindPopup(popupContent);
-            markersGroup.push(marker);
-            bounds.push([item.lat, item.lng]);
-          }
-        });
-
-        setTimeout(() => {
-          leafletMap.invalidateSize();
-          if (bounds.length > 0) {
-            leafletMap.fitBounds(bounds, { padding: [30, 30] });
-          }
-        }, 200);
-      } else {
-        mapContainer.classList.add('hidden');
-      }
-
-      // 渲染地點卡片
-      filtered.forEach(item => {
-        const card = document.createElement('div');
-        card.id = `card-${item.id}`;
-        card.className = "bg-white p-4 rounded-2xl shadow-sm border border-slate-100 transition-all";
-        card.innerHTML = `
-          <div class="flex justify-between items-start mb-2">
-            <div>
-              <span class="text-[11px] bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-md border border-indigo-100 mr-1.5">${item.category}</span>
-              <span class="text-[11px] bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-md">📍 ${item.station}</span>
-              <h3 class="text-base font-bold text-slate-800 mt-1.5">${item.title}</h3>
             </div>
-            <button onclick="deletePlace('${item.id}')" class="text-slate-300 hover:text-red-500 p-1">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
-          </div>
-          ${item.notes ? `<p class="text-xs text-slate-600 mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">📝 ${item.notes}</p>` : ''}
-          <div class="flex gap-2 pt-1">
-            ${item.navLink ? `
-              <a href="${item.navLink}" target="_blank" class="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-medium hover:bg-emerald-700 inline-flex items-center gap-1 shadow-sm transition">
-                <i data-lucide="navigation" class="w-3.5 h-3.5"></i> 開啟 Google Maps 導航
-              </a>
-            ` : ''}
           </div>
         `;
-        listEl.appendChild(card);
-      });
-
-      lucide.createIcons();
+      }).join('');
     }
+
+    window.setRegion = (r) => { currentRegion = r; renderApp(); };
+    window.setCategory = (c) => { currentCategory = c; renderApp(); };
+
+    // 匯出 JSON 資料
+    window.exportData = () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allPlaces));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "tokyo_travel_places.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    };
 
     // 監聽 Firebase 資料
     onSnapshot(collection(db, "places"), (snapshot) => {
@@ -355,7 +579,7 @@
         id: docSnap.id,
         ...docSnap.data()
       }));
-      renderPlaces();
+      renderApp();
     });
   </script>
 </body>
