@@ -35,7 +35,6 @@
       <i class="fa-regular fa-compass text-xl"></i>
       <h1 class="text-lg font-bold">東京自由行地圖筆記</h1>
     </div>
-    <!-- 獨立按鈕 -->
     <div class="flex items-center gap-2">
       <button onclick="openFHModal('flight')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
         <i class="fa-solid fa-plane"></i> + 新增航班
@@ -96,13 +95,13 @@
     <!-- 右側主內容區 -->
     <main class="md:col-span-3 space-y-5">
 
-      <!-- 1. 置頂行程重點備忘框 (Memo Box) -->
+      <!-- 1. 置頂行程重點備忘框 -->
       <div class="bg-amber-50/90 rounded-2xl p-4 shadow-sm border border-amber-200 space-y-2">
         <div class="flex justify-between items-center">
           <h3 class="font-bold text-amber-900 text-sm flex items-center gap-1.5">
             <i class="fa-solid fa-note-sticky text-amber-600"></i> 行程重點備忘錄 / 隨手記
           </h3>
-          <span id="memo-status" class="text-[10px] text-amber-600">自動儲存中</span>
+          <span id="memo-status" class="text-[10px] text-amber-600">同步中...</span>
         </div>
         <textarea id="memo-input" rows="3" placeholder="在此記下 JR Pass 兌換碼、WiFi 密碼、重要行程提醒等..." class="w-full p-2.5 bg-white/80 border border-amber-200/80 rounded-xl text-xs text-slate-700 outline-none focus:ring-2 focus:ring-amber-400"></textarea>
       </div>
@@ -317,14 +316,17 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let regions = JSON.parse(localStorage.getItem('tokyo_regions')) || ["新宿", "澀谷", "東京/銀座", "淺草/上野", "原宿/表參道", "秋葉原", "池袋", "六本木", "築地/台場"];
-    let categories = JSON.parse(localStorage.getItem('tokyo_categories')) || [
+    // 預設區域與類別 (雲端為主)
+    const defaultRegions = ["東京", "新宿", "澀谷", "淺草/上野", "原宿/表參道", "秋葉原", "池袋", "六本木", "築地/台場"];
+    const defaultCategories = [
       { name: "美食", icon: "fa-utensils", color: "bg-amber-100 text-amber-800" },
       { name: "景點", icon: "fa-torii-gate", color: "bg-emerald-100 text-emerald-800" },
       { name: "咖啡", icon: "fa-mug-hot", color: "bg-stone-100 text-stone-800" },
       { name: "購物", icon: "fa-bag-shopping", color: "bg-pink-100 text-pink-800" }
     ];
 
+    let regions = defaultRegions;
+    let categories = defaultCategories;
     let currentRegion = 'all';
     let currentCategory = 'all';
     let allPlaces = [];
@@ -334,9 +336,12 @@
     let markersMap = {};
     let adjustMarker = null;
 
-    function saveState() {
-      localStorage.setItem('tokyo_regions', JSON.stringify(regions));
-      localStorage.setItem('tokyo_categories', JSON.stringify(categories));
+    // 將區域與類別配置同步至 Firebase 雲端
+    async function saveCloudConfig() {
+      await setDoc(doc(db, "settings", "app_config"), {
+        regions: regions,
+        categories: categories
+      });
     }
 
     function initMap() {
@@ -372,7 +377,7 @@
       leafletMap.setView(position, 15);
     }
 
-    // 行程重點備忘錄 (Memo Box) 即時自動同步
+    // 行程重點備忘錄 (Memo Box)
     let memoTimeout = null;
     const memoInput = document.getElementById('memo-input');
     const memoStatus = document.getElementById('memo-status');
@@ -382,23 +387,11 @@
       clearTimeout(memoTimeout);
       memoTimeout = setTimeout(async () => {
         await setDoc(doc(db, "settings", "memo"), { content: memoInput.value });
-        memoStatus.innerText = '已自動儲存';
+        memoStatus.innerText = '已同步至雲端';
       }, 800);
     });
 
-    // 載入 Memo 資料
-    async function loadMemo() {
-      const docSnap = await getDoc(doc(db, "settings", "memo"));
-      if (docSnap.exists()) {
-        memoInput.value = docSnap.data().content || '';
-        memoStatus.innerText = '已同步雲端';
-      } else {
-        memoStatus.innerText = '準備就緒';
-      }
-    }
-    loadMemo();
-
-    // 綁定即時搜尋事件 (支援動態打字、中文輸入法)
+    // 監聽即時搜尋 (支援動態打字與中文輸入法)
     const searchInput = document.getElementById('search-input');
     ['input', 'keyup', 'compositionend'].forEach(evt => {
       searchInput.addEventListener(evt, () => renderApp());
@@ -500,7 +493,7 @@
         onEnd: () => {
           const list = [];
           document.querySelectorAll('[data-region]').forEach(el => list.push(el.getAttribute('data-region')));
-          regions = list; saveState(); renderApp();
+          regions = list; saveCloudConfig(); renderApp();
         }
       });
     }
@@ -514,7 +507,7 @@
             const c = categories.find(item => item.name === el.getAttribute('data-cat'));
             if (c) list.push(c);
           });
-          categories = list; saveState(); renderApp();
+          categories = list; saveCloudConfig(); renderApp();
         }
       });
     }
@@ -570,13 +563,13 @@
     window.addRegion = () => {
       const val = document.getElementById('new-region-input').value.trim();
       if (val && !regions.includes(val)) {
-        regions.push(val); saveState();
+        regions.push(val); saveCloudConfig();
         document.getElementById('new-region-input').value = '';
         renderManageRegions(); renderApp();
       }
     };
     window.deleteRegion = (r) => {
-      regions = regions.filter(i => i !== r); saveState();
+      regions = regions.filter(i => i !== r); saveCloudConfig();
       renderManageRegions(); renderApp();
     };
 
@@ -592,13 +585,13 @@
     window.addCategory = () => {
       const val = document.getElementById('new-cat-input').value.trim();
       if (val && !categories.some(c => c.name === val)) {
-        categories.push({ name: val, icon: "fa-tag", color: "bg-blue-100 text-blue-800" }); saveState();
+        categories.push({ name: val, icon: "fa-tag", color: "bg-blue-100 text-blue-800" }); saveCloudConfig();
         document.getElementById('new-cat-input').value = '';
         renderManageCategories(); renderApp();
       }
     };
     window.deleteCategory = (name) => {
-      categories = categories.filter(c => c.name !== name); saveState();
+      categories = categories.filter(c => c.name !== name); saveCloudConfig();
       renderManageCategories(); renderApp();
     };
 
@@ -733,11 +726,10 @@
       if (confirm("確定刪除？")) await deleteDoc(doc(db, "places", id));
     };
 
-    // 主渲染與即時搜尋核心
     function renderApp() {
       const searchKeyword = document.getElementById('search-input').value.trim().toLowerCase();
 
-      // 1. 車站區域渲染
+      // 1. 車站區域渲染 (修正：完美相符比對)
       document.getElementById('region-count').innerText = `${regions.length}個`;
       let regHTML = `
         <button onclick="setRegion('all')" class="w-full flex justify-between items-center px-3 py-2 rounded-xl text-xs font-medium transition ${currentRegion === 'all' ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
@@ -745,7 +737,8 @@
         </button>
       `;
       regions.forEach(r => {
-        const count = allPlaces.filter(p => p.region === r).length;
+        // 比對邏輯：無論資料寫 "東京" 或 "東京/銀座"，只要有相符即統計入內
+        const count = allPlaces.filter(p => p.region === r || (r.includes('/') && p.region && r.split('/').includes(p.region))).length;
         const active = currentRegion === r;
         regHTML += `
           <button onclick="setRegion('${r}')" class="w-full flex justify-between items-center px-3 py-2 rounded-xl text-xs font-medium transition ${active ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
@@ -755,7 +748,7 @@
       });
       document.getElementById('region-list').innerHTML = regHTML;
 
-      // 2. 類別頁籤渲染
+      // 2. 類別頁籤
       let catHTML = `<button onclick="setCategory('all')" class="px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${currentCategory === 'all' ? 'bg-[#4f46e5] text-white' : 'bg-white text-slate-600 border border-slate-200'}">全部</button>`;
       categories.forEach(c => {
         const active = currentCategory === c.name;
@@ -795,12 +788,11 @@
         `;
       }).join('');
 
-      // 4. 即時過濾比對邏輯 (全方位的欄位比對)
+      // 4. 即時過濾搜尋 logic (強大全面匹配)
       const filtered = allPlaces.filter(p => {
-        const matchRegion = currentRegion === 'all' || p.region === currentRegion;
+        const matchRegion = currentRegion === 'all' || p.region === currentRegion || (currentRegion.includes('/') && p.region && currentRegion.split('/').includes(p.region));
         const matchCategory = currentCategory === 'all' || p.category === currentCategory;
         
-        // 任何欄位包含搜尋文字即通過
         const matchSearch = !searchKeyword || 
           (p.title && p.title.toLowerCase().includes(searchKeyword)) ||
           (p.region && p.region.toLowerCase().includes(searchKeyword)) ||
@@ -814,7 +806,7 @@
       document.getElementById('current-region-label').innerText = currentRegion === 'all' ? '全部車站' : currentRegion;
       document.getElementById('places-count').innerText = `共 ${filtered.length} 個地點`;
 
-      // 5. 地圖 Pin 點同步更新
+      // 5. 地圖 Pin 點
       initMap();
       Object.values(markersMap).forEach(m => leafletMap.removeLayer(m));
       markersMap = {};
@@ -893,6 +885,24 @@
 
     window.setRegion = (r) => { currentRegion = r; renderApp(); };
     window.setCategory = (c) => { currentCategory = c; renderApp(); };
+
+    // Firebase 監聽 全局設定 (區域與類別雲端同步)
+    onSnapshot(doc(db, "settings", "app_config"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.regions) regions = data.regions;
+        if (data.categories) categories = data.categories;
+        renderApp();
+      }
+    });
+
+    // Firebase 監聽 備忘錄內容
+    onSnapshot(doc(db, "settings", "memo"), (docSnap) => {
+      if (docSnap.exists() && document.activeElement !== memoInput) {
+        memoInput.value = docSnap.data().content || '';
+        memoStatus.innerText = '已同步至雲端';
+      }
+    });
 
     // Firebase 監聽 景點
     onSnapshot(collection(db, "places"), (snapshot) => {
