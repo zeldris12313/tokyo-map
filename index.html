@@ -3,80 +3,127 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>東京行程地圖 2026</title>
+  <title>日本旅遊行程地圖</title>
   
-  <!-- Leaflet CSS (免費地圖套件) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  
-  <!-- Tailwind CSS (美化樣式) -->
+  <!-- Tailwind CSS & Lucide Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Leaflet 地圖套件 -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    #map { height: 400px; width: 100%; border-radius: 12px; }
+    #region-map { height: 320px; width: 100%; border-radius: 1rem; z-index: 1; }
     .card-highlight {
       animation: highlight 2s ease-in-out;
     }
     @keyframes highlight {
-      0% { transform: scale(1); ring: 4px #3b82f6; }
-      50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+      0% { transform: scale(1); ring: 4px #4f46e5; }
+      50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(79, 70, 229, 0.4); }
       100% { transform: scale(1); }
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen pb-12">
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-20">
 
   <!-- 頂部導覽列 -->
-  <header class="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto flex justify-between items-center">
-      <h1 class="text-xl font-bold flex items-center gap-2">
-        <span>🇯🇵</span> 東京行程總覽與地圖
-      </h1>
-      <span class="text-xs bg-blue-700 px-3 py-1 rounded-full">即時同步中</span>
+  <header class="bg-indigo-600 text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <i data-lucide="map-pin" class="w-6 h-6"></i>
+        <h1 class="text-lg font-bold">日本行程隨身手冊</h1>
+      </div>
+      <button onclick="openModal()" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl text-sm font-medium backdrop-blur-sm flex items-center gap-1.5 border border-white/20 transition">
+        <i data-lucide="plus" class="w-4 h-4"></i> 新增地點
+      </button>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto p-4 space-y-6">
+  <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- 大地圖區塊 -->
-    <section class="bg-white p-4 rounded-xl shadow">
-      <h2 class="text-lg font-bold mb-3 text-gray-800 flex items-center gap-2">
-        <span>🗺️</span> 東京行程大地圖
-      </h2>
-      <div id="map" class="shadow-inner"></div>
-      <p class="text-xs text-gray-500 mt-2">💡 點擊地圖上的標記，可預覽名稱與車站；點擊氣泡內的「查看詳情」可跳轉至下方卡片。</p>
-    </section>
+    <!-- 區域選擇頁籤 (例如：全部、東京、大阪...) -->
+    <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar" id="region-tabs">
+      <button onclick="filterRegion('all')" id="tab-all" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-indigo-600 text-white shadow-sm transition">
+        🌏 全部地點
+      </button>
+      <button onclick="filterRegion('東京')" id="tab-東京" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-white text-slate-600 hover:bg-slate-100 shadow-sm transition">
+        🗼 東京
+      </button>
+      <button onclick="filterRegion('關西')" id="tab-關西" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-white text-slate-600 hover:bg-slate-100 shadow-sm transition">
+        🏯 關西 / 京都大阪
+      </button>
+    </div>
 
-    <!-- 表單：新增地點 -->
-    <section class="bg-white p-6 rounded-xl shadow">
-      <h2 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
-        <span>➕</span> 新增地點
-      </h2>
-      
-      <form id="add-form" class="space-y-4">
-        <!-- Google Maps 連結自動解析 -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Google Maps 網址 (貼上長網址可自動提取)</label>
+    <!-- 類別篩選 (美食、景點、購物等) -->
+    <div class="flex gap-2 overflow-x-auto pb-1" id="category-tabs">
+      <button onclick="filterCategory('all')" class="cat-btn bg-slate-200 text-slate-700 px-3 py-1 rounded-lg text-xs font-medium">全部類別</button>
+      <button onclick="filterCategory('美食')" class="cat-btn bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-medium border">🍜 美食</button>
+      <button onclick="filterCategory('景點')" class="cat-btn bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-medium border">⛩️ 景點</button>
+      <button onclick="filterCategory('購物')" class="cat-btn bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-medium border">🛍️ 購物</button>
+      <button onclick="filterCategory('住宿')" class="cat-btn bg-white text-slate-600 px-3 py-1 rounded-lg text-xs font-medium border">🏨 住宿</button>
+    </div>
+
+    <!-- 動態大地圖區塊（預設隱藏，只有選擇特定區域如「東京」才會出現於頂部） -->
+    <div id="map-container" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 hidden">
+      <div class="flex justify-between items-center mb-2 px-1">
+        <span id="map-title" class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+          <i data-lucide="map" class="w-4 h-4 text-indigo-600"></i> 區域地圖總覽
+        </span>
+        <span class="text-[10px] text-slate-400">點擊標記預覽名稱</span>
+      </div>
+      <div id="region-map"></div>
+    </div>
+
+    <!-- 地點列表 -->
+    <div id="places-list" class="space-y-4">
+      <!-- 卡片由 JS 動態生成 -->
+    </div>
+
+  </main>
+
+  <!-- 新增/編輯地點 彈出視窗 (Modal) -->
+  <div id="placeModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
+      <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+        <h3 id="modalTitle" class="font-bold text-slate-800 flex items-center gap-1.5">
+          <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-600"></i> 新增地點
+        </h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="add-form" class="p-5 space-y-4 text-sm">
+        <!-- 網址解析區 -->
+        <div class="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+          <label class="block font-medium text-slate-700 mb-1 text-xs">Google Maps 網址 (自動解析店名/車站)</label>
           <div class="flex gap-2">
-            <input type="url" id="map-url" placeholder="https://www.google.com/maps/place/..." class="flex-1 p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-            <button type="button" id="parse-btn" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700">自動解析</button>
+            <input type="url" id="map-url" placeholder="貼上完整 Google Maps 網址" class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+            <button type="button" id="parse-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700">解析</button>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">景點 / 店名 *</label>
+          <input type="text" id="title" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">景點 / 店名 *</label>
-            <input type="text" id="title" required placeholder="例如：一蘭拉麵 新宿中央東口店" class="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <label class="block font-medium text-slate-700 mb-1">大區域 (例如：東京)</label>
+            <input type="text" id="region" required placeholder="東京" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">所屬車站 / 區域 *</label>
-            <input type="text" id="station" required placeholder="例如：新宿 / 澀谷" class="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <label class="block font-medium text-slate-700 mb-1">車站 / 細區 *</label>
+            <input type="text" id="station" required placeholder="新宿" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">類別 *</label>
-            <select id="category" class="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <label class="block font-medium text-slate-700 mb-1">類別 *</label>
+            <select id="category" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
               <option value="美食">🍜 美食</option>
               <option value="景點">⛩️ 景點</option>
               <option value="購物">🛍️ 購物</option>
@@ -85,126 +132,124 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Google Maps 導航連結</label>
-            <input type="url" id="nav-link" placeholder="可貼上短網址或長網址" class="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <label class="block font-medium text-slate-700 mb-1">導航連結</label>
+            <input type="url" id="nav-link" placeholder="短網址或長網址" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
           </div>
         </div>
 
-        <!-- 隱藏座標 (解析用) -->
         <input type="hidden" id="lat">
         <input type="hidden" id="lng">
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">備註 / 營業時間</label>
-          <textarea id="notes" rows="2" placeholder="例如：11:00-22:00，必食豚骨拉麵" class="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+          <label class="block font-medium text-slate-700 mb-1">備註 / 營業時間</label>
+          <textarea id="notes" rows="2" placeholder="例如：11:00-22:00，必食清單" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
         </div>
 
-        <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition">儲存景點</button>
+        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium shadow-md shadow-indigo-100 hover:bg-indigo-700 transition">儲存地點</button>
       </form>
-    </section>
-
-    <!-- 地點列表卡片區 -->
-    <section>
-      <h2 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
-        <span>📋</span> 已清單地點
-      </h2>
-      <div id="places-list" class="space-y-4">
-        <!-- 卡片會由 JS 動態生成 -->
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    </div>
+  </div>
 
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // ⚠️ 請記得將以下設定替換為你原本 Firebase 專案的配置 ⚠️
+    // 使用你提供的 Firebase 設定
     const firebaseConfig = {
       apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
-      authDomain: "tokyo-travel-2026-9a82e.firebaseapp.com",
-      projectId: "tokyo-travel-2026-9a82e",
-      storageBucket: "tokyo-travel-2026-9a82e.firebasestorage.app",
-      messagingSenderId: "1066036344126",
-      appId: "1:1066036344126:web:8e47e8497866ea8206e86f",
-      measurementId: "G-6MFJZKJZ6H"
+      authDomain: "tokyo-travel-2026-9a82e.firebaseapp.com",
+      projectId: "tokyo-travel-2026-9a82e",
+      storageBucket: "tokyo-travel-2026-9a82e.firebasestorage.app",
+      messagingSenderId: "1066036344126",
+      appId: "1:1066036344126:web:8e47e8497866ea8206e86f",
+      measurementId: "G-6MFJZKJZ6H"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 初始化 Leaflet 地圖 (預設中心為東京站)
-    const map = L.map('map').setView([35.681236, 139.767125], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+    let currentRegion = 'all';
+    let currentCategory = 'all';
+    let allPlaces = [];
+    let leafletMap = null;
+    let markersGroup = [];
 
-    const markersMap = {}; // 儲存 Marker 參照
-
-    // 東京主要車站座標參考庫 (用於自動估算車站)
-    const stations = [
-      { name: "新宿", lat: 35.6896, lng: 139.7006 },
-      { name: "澀谷", lat: 35.6580, lng: 139.7016 },
-      { name: "東京站", lat: 35.6812, lng: 139.7671 },
-      { name: "上野", lat: 35.7138, lng: 139.7773 },
-      { name: "淺草", lat: 35.7111, lng: 139.7964 },
-      { name: "銀座", lat: 35.6719, lng: 139.7648 },
-      { name: "池袋", lat: 35.7295, lng: 139.7109 },
-      { name: "秋葉原", lat: 35.6983, lng: 139.7731 },
-      { name: "六本木", lat: 35.6628, lng: 139.7313 }
-    ];
-
-    // 計算距離推算最近車站
-    function findNearestStation(lat, lng) {
-      let minDistance = Infinity;
-      let nearest = "東京區";
-      stations.forEach(s => {
-        const dist = Math.hypot(s.lat - lat, s.lng - lng);
-        if (dist < minDistance) {
-          minDistance = dist;
-          nearest = s.name;
-        }
-      });
-      return nearest;
+    // 初始化 Leaflet 地圖
+    function initMap() {
+      if (!leafletMap) {
+        leafletMap = L.map('region-map').setView([35.6812, 139.7671], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(leafletMap);
+      }
     }
 
-    // 解析 Google Maps 長網址
+    // Modal 控制
+    window.openModal = () => document.getElementById('placeModal').classList.remove('hidden');
+    window.closeModal = () => document.getElementById('placeModal').classList.add('hidden');
+
+    // 區域與類別過濾邏輯
+    window.filterRegion = (region) => {
+      currentRegion = region;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = 'tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-white text-slate-600 hover:bg-slate-100 shadow-sm transition';
+      });
+      const activeTab = document.getElementById(`tab-${region}`) || document.getElementById('tab-all');
+      if (activeTab) activeTab.className = 'tab-btn px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap bg-indigo-600 text-white shadow-sm transition';
+
+      renderPlaces();
+    };
+
+    window.filterCategory = (cat) => {
+      currentCategory = cat;
+      renderPlaces();
+    };
+
+    // 捲動至卡片並高亮
+    window.scrollToCard = (id) => {
+      const card = document.getElementById(`card-${id}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('card-highlight', 'ring-4', 'ring-indigo-500');
+        setTimeout(() => {
+          card.classList.remove('card-highlight', 'ring-4', 'ring-indigo-500');
+        }, 2000);
+      }
+    };
+
+    // 刪除地點
+    window.deletePlace = async (id) => {
+      if (confirm("確定要刪除這個地點嗎？")) {
+        await deleteDoc(doc(db, "places", id));
+      }
+    };
+
+    // 網址解析
     document.getElementById('parse-btn').addEventListener('click', () => {
       const url = document.getElementById('map-url').value;
-      if (!url) return alert('請先貼上 Google Maps 網址！');
+      if (!url) return alert('請先貼上網址！');
 
-      // 提取店名
       const placeMatch = url.match(/\/place\/([^\/]+)/);
       if (placeMatch) {
         document.getElementById('title').value = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
       }
 
-      // 提取座標
       const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
       if (coordMatch) {
-        const lat = parseFloat(coordMatch[1]);
-        const lng = parseFloat(coordMatch[2]);
-        document.getElementById('lat').value = lat;
-        document.getElementById('lng').value = lng;
-
-        // 自動推定車站
-        const station = findNearestStation(lat, lng);
-        document.getElementById('station').value = station;
+        document.getElementById('lat').value = coordMatch[1];
+        document.getElementById('lng').value = coordMatch[2];
       }
-
-      // 自動預設導航連結
       document.getElementById('nav-link').value = url;
+      if (!document.getElementById('region').value) document.getElementById('region').value = "東京";
     });
 
-    // 表單提交儲存至 Firebase
+    // 表單提交
     document.getElementById('add-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const newPlace = {
         title: document.getElementById('title').value,
+        region: document.getElementById('region').value || "東京",
         station: document.getElementById('station').value,
         category: document.getElementById('category').value,
         navLink: document.getElementById('nav-link').value,
@@ -216,85 +261,101 @@
 
       await addDoc(collection(db, "places"), newPlace);
       document.getElementById('add-form').reset();
+      closeModal();
     });
 
-    // 捲動至卡片並高亮
-    window.scrollToCard = function(id) {
-      const card = document.getElementById(`card-${id}`);
-      if (card) {
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        card.classList.add('card-highlight', 'ring-4', 'ring-blue-500');
-        setTimeout(() => {
-          card.classList.remove('card-highlight', 'ring-4', 'ring-blue-500');
-        }, 2000);
-      }
-    };
-
-    // 刪除地點
-    window.deletePlace = async function(id) {
-      if (confirm("確定要刪除這個地點嗎？")) {
-        await deleteDoc(doc(db, "places", id));
-      }
-    };
-
-    // 即時監聽 Firebase 資料更新
-    onSnapshot(collection(db, "places"), (snapshot) => {
+    // 渲染資料與地圖
+    function renderPlaces() {
       const listEl = document.getElementById('places-list');
       listEl.innerHTML = '';
 
-      // 清除舊 Marker
-      Object.values(markersMap).forEach(m => map.removeLayer(m));
+      // 篩選資料
+      const filtered = allPlaces.filter(item => {
+        const matchRegion = (currentRegion === 'all') || (item.region === currentRegion) || (currentRegion === '東京' && (!item.region || item.region.includes('東京')));
+        const matchCat = (currentCategory === 'all') || (item.category === currentCategory);
+        return matchRegion && matchCat;
+      });
 
-      const bounds = [];
+      // 控制地圖顯示邏輯：當選擇了非 'all' 的區域（如選擇「東京」）時顯示大地圖
+      const mapContainer = document.getElementById('map-container');
+      if (currentRegion !== 'all') {
+        mapContainer.classList.remove('hidden');
+        document.getElementById('map-title').innerText = `🗺️ ${currentRegion} 區域地圖總覽`;
+        initMap();
 
-      snapshot.docs.forEach(docSnap => {
-        const item = docSnap.data();
-        const id = docSnap.id;
+        // 重繪地圖標記
+        markersGroup.forEach(m => leafletMap.removeLayer(m));
+        markersGroup = [];
+        const bounds = [];
 
-        // 地圖上加 Pin & 彈出框 (Popup)
-        if (item.lat && item.lng) {
-          const marker = L.marker([item.lat, item.lng]).addTo(map);
-          bounds.push([item.lat, item.lng]);
+        filtered.forEach(item => {
+          if (item.lat && item.lng) {
+            const marker = L.marker([item.lat, item.lng]).addTo(leafletMap);
+            
+            // 點擊 Pin 彈出名稱與詳情按鈕
+            const popupContent = `
+              <div class="p-1 text-center font-sans">
+                <div class="font-bold text-xs text-slate-800 mb-0.5">${item.title}</div>
+                <div class="text-[10px] text-slate-500 mb-2">📍 ${item.station} | ${item.category}</div>
+                <button onclick="scrollToCard('${item.id}')" class="bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-md hover:bg-indigo-700 transition">
+                  👇 查看詳情
+                </button>
+              </div>
+            `;
+            marker.bindPopup(popupContent);
+            markersGroup.push(marker);
+            bounds.push([item.lat, item.lng]);
+          }
+        });
 
-          // 核心需求：點擊 Pin 先 show 出名稱框，再點框內的按鈕捲動到下方
-          const popupContent = `
-            <div class="p-1 text-center">
-              <div class="font-bold text-sm text-gray-800">${item.title}</div>
-              <div class="text-xs text-gray-500 mb-2">📍 ${item.station} | ${item.category}</div>
-              <button onclick="scrollToCard('${id}')" class="bg-blue-600 text-white text-xs px-3 py-1 rounded hover:bg-blue-700">
-                👇 查看詳情
-              </button>
-            </div>
-          `;
-          marker.bindPopup(popupContent);
-          markersMap[id] = marker;
-        }
+        setTimeout(() => {
+          leafletMap.invalidateSize();
+          if (bounds.length > 0) {
+            leafletMap.fitBounds(bounds, { padding: [30, 30] });
+          }
+        }, 200);
+      } else {
+        mapContainer.classList.add('hidden');
+      }
 
-        // 渲染下方卡片
+      // 渲染地點卡片
+      filtered.forEach(item => {
         const card = document.createElement('div');
-        card.id = `card-${id}`;
-        card.className = "bg-white p-5 rounded-xl shadow border border-gray-100 transition-all";
+        card.id = `card-${item.id}`;
+        card.className = "bg-white p-4 rounded-2xl shadow-sm border border-slate-100 transition-all";
         card.innerHTML = `
           <div class="flex justify-between items-start mb-2">
             <div>
-              <span class="text-xs bg-blue-100 text-blue-800 font-semibold px-2.5 py-0.5 rounded mr-2">${item.category}</span>
-              <span class="text-xs bg-gray-100 text-gray-700 font-medium px-2.5 py-0.5 rounded">📍 ${item.station}</span>
-              <h3 class="text-lg font-bold text-gray-800 mt-1">${item.title}</h3>
+              <span class="text-[11px] bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-md border border-indigo-100 mr-1.5">${item.category}</span>
+              <span class="text-[11px] bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-md">📍 ${item.station}</span>
+              <h3 class="text-base font-bold text-slate-800 mt-1.5">${item.title}</h3>
             </div>
-            <button onclick="deletePlace('${id}')" class="text-red-400 hover:text-red-600 text-sm">✕ 刪除</button>
+            <button onclick="deletePlace('${item.id}')" class="text-slate-300 hover:text-red-500 p-1">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
           </div>
-          ${item.notes ? `<p class="text-sm text-gray-600 mb-3 bg-gray-50 p-2.5 rounded-lg">📝 ${item.notes}</p>` : ''}
-          <div class="flex gap-2">
-            ${item.navLink ? `<a href="${item.navLink}" target="_blank" class="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 inline-flex items-center gap-1">🧭 開啟 Google Maps 導航</a>` : ''}
+          ${item.notes ? `<p class="text-xs text-slate-600 mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">📝 ${item.notes}</p>` : ''}
+          <div class="flex gap-2 pt-1">
+            ${item.navLink ? `
+              <a href="${item.navLink}" target="_blank" class="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-medium hover:bg-emerald-700 inline-flex items-center gap-1 shadow-sm transition">
+                <i data-lucide="navigation" class="w-3.5 h-3.5"></i> 開啟 Google Maps 導航
+              </a>
+            ` : ''}
           </div>
         `;
         listEl.appendChild(card);
       });
 
-      // 自動調整地圖縮放以容納所有 Pin
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [30, 30] });
-      }
+      lucide.createIcons();
+    }
+
+    // 監聽 Firebase 資料
+    onSnapshot(collection(db, "places"), (snapshot) => {
+      allPlaces = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+      renderPlaces();
     });
   </script>
 </body>
