@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- SortableJS 拖拉排序 -->
+  <!-- SortableJS 拖拉排序套件 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 
   <style>
@@ -35,9 +35,13 @@
       <i class="fa-regular fa-compass text-xl"></i>
       <h1 class="text-lg font-bold">東京自由行地圖筆記</h1>
     </div>
+    <!-- 拆分獨立按鈕 -->
     <div class="flex items-center gap-2">
-      <button onclick="openFlightHotelModal()" class="bg-indigo-700 hover:bg-indigo-800 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
-        <i class="fa-solid fa-plane"></i> + 航班/酒店
+      <button onclick="openFHModal('flight')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
+        <i class="fa-solid fa-plane"></i> + 新增航班
+      </button>
+      <button onclick="openFHModal('hotel')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
+        <i class="fa-solid fa-hotel"></i> + 新增酒店
       </button>
       <button onclick="openAddModal()" class="bg-[#facc15] hover:bg-yellow-400 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-sm transition">
         <i class="fa-solid fa-circle-plus"></i> 新增景點/食店
@@ -66,46 +70,46 @@
         <nav id="region-list" class="space-y-1"></nav>
       </div>
 
-      <!-- 2. 行程準備與待辦清單 (Packing List / Todo) -->
+      <!-- 2. 準備物品/待辦清單 (完全可拖拉排序與編輯) -->
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
           <h2 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
-            <i class="fa-solid fa-[#facc15] fa-clipboard-check text-amber-500"></i> 準備物品/待辦清單
+            <i class="fa-solid fa-clipboard-check text-amber-500"></i> 準備物品/待辦清單
           </h2>
+          <span class="text-[10px] text-slate-400">按住 ::: 拖拉排序</span>
         </div>
 
-        <!-- 新增清單輸入框與按鈕 -->
         <div class="space-y-2">
           <div class="flex gap-1.5">
-            <input type="text" id="todo-input" placeholder="新增物品 (如: 護照)" class="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
-            <button onclick="addTodo('item')" class="bg-indigo-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold hover:bg-indigo-700">新增</button>
+            <input type="text" id="todo-input" placeholder="新增物品 (例: 護照)" class="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+            <button onclick="addTodo('item')" class="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-indigo-700">新增</button>
           </div>
           <button onclick="addTodo('divider')" class="w-full text-[11px] text-slate-500 bg-slate-100 hover:bg-slate-200 py-1 rounded-lg border border-dashed border-slate-300">
             + 插入分隔線 (例如: --- 證件類 ---)
           </button>
         </div>
 
-        <!-- 清單列表 -->
-        <div id="todo-list" class="space-y-1.5 max-h-72 overflow-y-auto text-xs pt-1"></div>
+        <!-- 拖拉清單容器 -->
+        <div id="todo-list" class="space-y-1.5 max-h-80 overflow-y-auto text-xs pt-1"></div>
       </div>
     </aside>
 
     <!-- 右側主內容區 -->
     <main class="md:col-span-3 space-y-5">
 
-      <!-- 航班與酒店事項區塊 (Flight & Hotel) -->
+      <!-- 航班與酒店卡片展示區 -->
       <div id="flight-hotel-section" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
 
-      <!-- 上方搜尋列與分類標籤 -->
+      <!-- 搜尋列與分類頁籤 (已優化搜尋) -->
       <div class="flex flex-col md:flex-row justify-between items-center gap-4">
         <div class="relative w-full md:w-80">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
-          <input type="text" id="search-input" oninput="renderApp()" placeholder="搜尋名稱、類別或備註..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+          <input type="text" id="search-input" onkeyup="renderApp()" placeholder="搜尋名稱、車站、推介或備註..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
         </div>
         <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1" id="category-tabs"></div>
       </div>
 
-      <!-- 大地圖區塊 -->
+      <!-- Google 大地圖總覽區塊 -->
       <div id="map-section" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
         <div class="flex justify-between items-center mb-2 px-1">
           <span class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
@@ -116,7 +120,7 @@
         <div id="map"></div>
       </div>
 
-      <!-- 目前區域提示列 -->
+      <!-- 目前區域提示 -->
       <div class="flex justify-between items-center">
         <h3 class="text-sm font-bold text-slate-700 flex items-center gap-1">
           目前區域：<span id="current-region-label" class="text-indigo-600">全部車站</span>
@@ -165,7 +169,6 @@
           </div>
         </div>
 
-        <!-- 圖片上傳：網址或本地檔案 -->
         <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
           <label class="block font-medium text-slate-700 text-xs">圖片來源 (選擇網址或直接上傳圖片)</label>
           <input type="url" id="image-url" placeholder="貼上圖片網址 https://..." class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none">
@@ -190,7 +193,6 @@
           <input type="url" id="nav-link" placeholder="導航連結" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
 
-        <!-- 經緯度與微調提示 -->
         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
           <span class="text-xs font-semibold text-slate-700">座標微調（解析後可直接在地圖上拖動 Pin 點校正）</span>
           <div class="grid grid-cols-2 gap-2 text-xs">
@@ -204,63 +206,56 @@
     </div>
   </div>
 
-  <!-- Modal 2: 航班/酒店事項 Modal -->
-  <div id="flightHotelModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+  <!-- Modal 2: 航班 / 酒店Modal (分開獨立邏輯與支援編輯) -->
+  <div id="fhModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
       <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
-        <h3 id="fhModalTitle" class="font-bold text-slate-800 text-sm">新增 航班 / 酒店事項</h3>
-        <button onclick="closeFlightHotelModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <h3 id="fhModalTitle" class="font-bold text-slate-800 text-sm">新增事項</h3>
+        <button onclick="closeFHModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
       <form id="fh-form" class="p-5 space-y-4 text-sm">
         <input type="hidden" id="fh-edit-id">
+        <input type="hidden" id="fh-type">
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">種類 *</label>
-          <select id="fh-type" onchange="toggleFHFields()" class="w-full p-2.5 border border-slate-200 rounded-xl bg-white outline-none">
-            <option value="flight">✈️ 航班 (Flight)</option>
-            <option value="hotel">🏨 酒店 (Hotel)</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block font-medium text-slate-700 mb-1" id="fh-title-label">航空公司 / 航班 (例如: HK Express UO624)</label>
+          <label class="block font-medium text-slate-700 mb-1" id="fh-title-label">名稱 *</label>
           <input type="text" id="fh-title" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-medium text-slate-700 mb-1" id="fh-date1-label">出發時間 / 入住日期</label>
-            <input type="text" id="fh-date1" placeholder="10/25 23:55 或 2026-10-25" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
+            <label class="block font-medium text-slate-700 mb-1" id="fh-date1-label">時間 1</label>
+            <input type="text" id="fh-date1" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
           </div>
           <div>
-            <label class="block font-medium text-slate-700 mb-1" id="fh-date2-label">到達時間 / 退房日期</label>
-            <input type="text" id="fh-date2" placeholder="10/26 05:05 或 2026-11-01" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
+            <label class="block font-medium text-slate-700 mb-1" id="fh-date2-label">時間 2</label>
+            <input type="text" id="fh-date2" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-medium text-slate-700 mb-1" id="fh-code-label">訂位代碼 (PNR / Booking No.)</label>
-            <input type="text" id="fh-code" placeholder="ABC123XYZ" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
+            <label class="block font-medium text-slate-700 mb-1" id="fh-code-label">確認號 / 代碼</label>
+            <input type="text" id="fh-code" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
           </div>
           <div>
-            <label class="block font-medium text-slate-700 mb-1" id="fh-extra-label">航廈/閘口/房型</label>
-            <input type="text" id="fh-extra" placeholder="T1 閘口22 / 大床禁煙房" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
+            <label class="block font-medium text-slate-700 mb-1" id="fh-extra-label">補充細節</label>
+            <input type="text" id="fh-extra" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
           </div>
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">地址 / 導航連結 (酒店適用)</label>
-          <input type="text" id="fh-nav" placeholder="Google Maps 連結或地址" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
+          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航</label>
+          <input type="text" id="fh-nav" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">備註 (座位/接送/注意事項)</label>
-          <textarea id="fh-notes" rows="2" placeholder="例如：已選座位 21B/21C，不含餐食..." class="w-full p-2.5 border border-slate-200 rounded-xl outline-none"></textarea>
+          <label class="block font-medium text-slate-700 mb-1">備註 / 注意事項</label>
+          <textarea id="fh-notes" rows="2" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none"></textarea>
         </div>
 
-        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">儲存事項</button>
+        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">儲存資料</button>
       </form>
     </div>
   </div>
@@ -294,7 +289,7 @@
     </div>
   </div>
 
-  <!-- Firebase SDK & 應用程式 logic -->
+  <!-- Firebase SDK & JS Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -323,7 +318,8 @@
     let currentRegion = 'all';
     let currentCategory = 'all';
     let allPlaces = [];
-    let allFH = []; // 航班與酒店事項
+    let allFH = [];
+    let allTodos = [];
     let leafletMap = null;
     let markersMap = {};
     let adjustMarker = null;
@@ -333,7 +329,6 @@
       localStorage.setItem('tokyo_categories', JSON.stringify(categories));
     }
 
-    // 地圖初始化
     function initMap() {
       if (!leafletMap) {
         leafletMap = L.map('map').setView([35.6812, 139.7671], 11);
@@ -343,7 +338,6 @@
           attribution: 'Google Maps'
         }).addTo(leafletMap);
 
-        // 點擊地圖任意位置更新可拖動 Pin
         leafletMap.on('click', (e) => {
           const { lat, lng } = e.latlng;
           document.getElementById('lat').value = lat.toFixed(6);
@@ -353,7 +347,6 @@
       }
     }
 
-    // 移動/更新可拖動 Pin 點
     function updateAdjustMarker(lat, lng) {
       const position = [parseFloat(lat), parseFloat(lng)];
       if (adjustMarker) {
@@ -374,7 +367,6 @@
       document.getElementById('place-form').reset();
       document.getElementById('edit-id').value = '';
       document.getElementById('modalTitle').innerText = '新增景點 / 食店';
-      document.getElementById('submit-btn').innerText = '儲存景點';
       populateSelects();
       document.getElementById('placeModal').classList.remove('hidden');
     };
@@ -386,8 +378,6 @@
       populateSelects();
       document.getElementById('edit-id').value = item.id;
       document.getElementById('modalTitle').innerText = '編輯景點 / 食店';
-      document.getElementById('submit-btn').innerText = '更新景點';
-
       document.getElementById('title').value = item.title || '';
       document.getElementById('region-select').value = item.region || regions[0];
       document.getElementById('category-select').value = item.category || categories[0].name;
@@ -404,31 +394,45 @@
 
     window.closePlaceModal = () => document.getElementById('placeModal').classList.add('hidden');
 
-    // Modal 控制 (航班/酒店)
-    window.openFlightHotelModal = () => {
+    // 分開獨立 Modal 控制 (航班 / 酒店)
+    window.openFHModal = (type, editId = null) => {
       document.getElementById('fh-form').reset();
-      document.getElementById('fh-edit-id').value = '';
-      toggleFHFields();
-      document.getElementById('flightHotelModal').classList.remove('hidden');
-    };
-    window.closeFlightHotelModal = () => document.getElementById('flightHotelModal').classList.add('hidden');
+      document.getElementById('fh-edit-id').value = editId || '';
+      document.getElementById('fh-type').value = type;
 
-    window.toggleFHFields = () => {
-      const type = document.getElementById('fh-type').value;
       if (type === 'flight') {
+        document.getElementById('fhModalTitle').innerText = editId ? '編輯航班資訊' : '新增航班資訊';
         document.getElementById('fh-title-label').innerText = '航空公司 / 航班 (例: HK Express UO624)';
         document.getElementById('fh-date1-label').innerText = '起飛時間';
         document.getElementById('fh-date2-label').innerText = '到達時間';
         document.getElementById('fh-code-label').innerText = '訂位代碼 PNR';
         document.getElementById('fh-extra-label').innerText = '航廈 / 閘口';
       } else {
+        document.getElementById('fhModalTitle').innerText = editId ? '編輯酒店資訊' : '新增酒店資訊';
         document.getElementById('fh-title-label').innerText = '酒店名稱 (例: 池袋東口 Toyoko Inn)';
         document.getElementById('fh-date1-label').innerText = '入住日期 Check-in';
         document.getElementById('fh-date2-label').innerText = '退房日期 Check-out';
         document.getElementById('fh-code-label').innerText = '訂房確認號';
         document.getElementById('fh-extra-label').innerText = '房型 / 備註';
       }
+
+      if (editId) {
+        const fh = allFH.find(item => item.id === editId);
+        if (fh) {
+          document.getElementById('fh-title').value = fh.title || '';
+          document.getElementById('fh-date1').value = fh.date1 || '';
+          document.getElementById('fh-date2').value = fh.date2 || '';
+          document.getElementById('fh-code').value = fh.code || '';
+          document.getElementById('fh-extra').value = fh.extra || '';
+          document.getElementById('fh-nav').value = fh.nav || '';
+          document.getElementById('fh-notes').value = fh.notes || '';
+        }
+      }
+
+      document.getElementById('fhModal').classList.remove('hidden');
     };
+
+    window.closeFHModal = () => document.getElementById('fhModal').classList.add('hidden');
 
     window.openManageRegionsModal = () => {
       renderManageRegions();
@@ -449,7 +453,7 @@
       document.getElementById('category-select').innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
     }
 
-    // 拖拉排序 (SortableJS)
+    // SortableJS 初始化
     function initRegionSortable() {
       Sortable.create(document.getElementById('manage-regions-list'), {
         handle: '.drag-handle', ghostClass: 'ghost',
@@ -474,6 +478,56 @@
         }
       });
     }
+
+    // 準備物品/待辦清單拖拉與編輯
+    function initTodoSortable() {
+      const el = document.getElementById('todo-list');
+      Sortable.create(el, {
+        handle: '.drag-handle',
+        ghostClass: 'ghost',
+        onEnd: async () => {
+          const newOrderIds = [];
+          el.querySelectorAll('[data-todo-id]').forEach(node => {
+            newOrderIds.push(node.getAttribute('data-todo-id'));
+          });
+          // 更新 Firebase 順序
+          for (let index = 0; index < newOrderIds.length; index++) {
+            await updateDoc(doc(db, "todos", newOrderIds[index]), { order: index });
+          }
+        }
+      });
+    }
+
+    window.addTodo = async (type) => {
+      const input = document.getElementById('todo-input');
+      const text = input.value.trim();
+      const currentMaxOrder = allTodos.length;
+
+      if (type === 'divider') {
+        const divName = prompt("請輸入分隔線標題:", "證件類");
+        if (divName) {
+          await addDoc(collection(db, "todos"), { isDivider: true, title: divName, order: currentMaxOrder });
+        }
+      } else if (text) {
+        await addDoc(collection(db, "todos"), { isDivider: false, title: text, done: false, order: currentMaxOrder });
+        input.value = '';
+      }
+    };
+
+    window.editTodo = async (id, oldTitle) => {
+      const newTitle = prompt("編輯內容:", oldTitle);
+      if (newTitle && newTitle.trim()) {
+        await updateDoc(doc(db, "todos", id), { title: newTitle.trim() });
+      }
+    };
+
+    window.toggleTodo = async (id, currentDone) => {
+      await updateDoc(doc(db, "todos", id), { done: !currentDone });
+    };
+
+    window.deleteTodo = async (id) => {
+      await deleteDoc(doc(db, "todos", id));
+    };
 
     window.addRegion = () => {
       const val = document.getElementById('new-region-input').value.trim();
@@ -519,30 +573,7 @@
       `).join('');
     }
 
-    // 準備物品/待辦清單 (TodoList)
-    window.addTodo = async (type) => {
-      const input = document.getElementById('todo-input');
-      const text = input.value.trim();
-      if (type === 'divider') {
-        const divName = prompt("請輸入分隔線標題 (例: 證件類):", "證件類");
-        if (divName) {
-          await addDoc(collection(db, "todos"), { isDivider: true, title: divName, createdAt: new Date() });
-        }
-      } else if (text) {
-        await addDoc(collection(db, "todos"), { isDivider: false, title: text, done: false, createdAt: new Date() });
-        input.value = '';
-      }
-    };
-
-    window.toggleTodo = async (id, currentDone) => {
-      await updateDoc(doc(db, "todos", id), { done: !currentDone });
-    };
-
-    window.deleteTodo = async (id) => {
-      await deleteDoc(doc(db, "todos", id));
-    };
-
-    // 自動解析 Google Maps 網址 (雙重精確提取)
+    // Google Maps 網址解析
     document.getElementById('parse-btn').addEventListener('click', () => {
       const url = document.getElementById('map-url').value.trim();
       if (!url) return alert('請先貼上網址！');
@@ -573,7 +604,6 @@
       document.getElementById('nav-link').value = url;
     });
 
-    // 處理景點圖片檔案上傳轉 Base64
     async function getBase64Image(file) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -615,9 +645,10 @@
       closePlaceModal();
     });
 
-    // 儲存航班與酒店
+    // 儲存/更新 航班與酒店
     document.getElementById('fh-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const fhEditId = document.getElementById('fh-edit-id').value;
       const fhData = {
         type: document.getElementById('fh-type').value,
         title: document.getElementById('fh-title').value,
@@ -627,10 +658,15 @@
         extra: document.getElementById('fh-extra').value,
         nav: document.getElementById('fh-nav').value,
         notes: document.getElementById('fh-notes').value,
-        createdAt: new Date()
       };
-      await addDoc(collection(db, "flight_hotel"), fhData);
-      closeFlightHotelModal();
+
+      if (fhEditId) {
+        await updateDoc(doc(db, "flight_hotel", fhEditId), fhData);
+      } else {
+        fhData.createdAt = new Date();
+        await addDoc(collection(db, "flight_hotel"), fhData);
+      }
+      closeFHModal();
     });
 
     window.deleteFH = async (id) => {
@@ -662,9 +698,10 @@
       if (confirm("確定刪除？")) await deleteDoc(doc(db, "places", id));
     };
 
-    // 主渲染流程
+    // 渲染 UI 應用程式
     function renderApp() {
-      const searchKeyword = document.getElementById('search-input').value.toLowerCase();
+      // 全方位精確搜尋比對
+      const searchKeyword = document.getElementById('search-input').value.trim().toLowerCase();
 
       // 1. 車站區域
       document.getElementById('region-count').innerText = `${regions.length}個`;
@@ -697,7 +734,7 @@
       catHTML += `<button onclick="openManageCategoriesModal()" class="text-xs text-indigo-600 px-2" title="管理類別"><i class="fa-solid fa-gear"></i></button>`;
       document.getElementById('category-tabs').innerHTML = catHTML;
 
-      // 3. 渲染航班與酒店區塊
+      // 3. 航班與酒店事項
       const fhSec = document.getElementById('flight-hotel-section');
       fhSec.innerHTML = allFH.map(fh => {
         const isFlight = fh.type === 'flight';
@@ -716,16 +753,27 @@
               ${fh.notes ? `<p class="text-xs text-slate-400 italic">${fh.notes}</p>` : ''}
               ${fh.nav ? `<a href="${fh.nav}" target="_blank" class="inline-block text-xs text-indigo-600 hover:underline mt-1"><i class="fa-solid fa-location-arrow"></i> 開啟地圖/導航</a>` : ''}
             </div>
-            <button onclick="deleteFH('${fh.id}')" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can text-xs"></i></button>
+            <div class="flex items-center gap-2">
+              <button onclick="openFHModal('${fh.type}', '${fh.id}')" class="text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+              <button onclick="deleteFH('${fh.id}')" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can text-xs"></i></button>
+            </div>
           </div>
         `;
       }).join('');
 
-      // 4. 篩選景點地點
+      // 4. 景點過濾搜尋
       const filtered = allPlaces.filter(p => {
         const matchRegion = currentRegion === 'all' || p.region === currentRegion;
         const matchCategory = currentCategory === 'all' || p.category === currentCategory;
-        const matchSearch = !searchKeyword || p.title?.toLowerCase().includes(searchKeyword) || p.notes?.toLowerCase().includes(searchKeyword);
+        
+        // 多欄位模糊搜尋比對
+        const matchSearch = !searchKeyword || 
+          (p.title && p.title.toLowerCase().includes(searchKeyword)) ||
+          (p.region && p.region.toLowerCase().includes(searchKeyword)) ||
+          (p.category && p.category.toLowerCase().includes(searchKeyword)) ||
+          (p.recommendation && p.recommendation.toLowerCase().includes(searchKeyword)) ||
+          (p.notes && p.notes.toLowerCase().includes(searchKeyword));
+
         return matchRegion && matchCategory && matchSearch;
       });
 
@@ -812,37 +860,57 @@
     window.setRegion = (r) => { currentRegion = r; renderApp(); };
     window.setCategory = (c) => { currentCategory = c; renderApp(); };
 
-    // 監聽 Firebase 景點資料
+    // Firebase 監聽 景點
     onSnapshot(collection(db, "places"), (snapshot) => {
       allPlaces = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       renderApp();
     });
 
-    // 監聽 Firebase 航班與酒店資料
+    // Firebase 監聽 航班與酒店
     onSnapshot(collection(db, "flight_hotel"), (snapshot) => {
       allFH = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       renderApp();
     });
 
-    // 監聽 Firebase 待辦清單
+    // Firebase 監聽 待辦清單 (根據 order 手動排序)
     onSnapshot(collection(db, "todos"), (snapshot) => {
-      const todos = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      allTodos = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      allTodos.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
       const listEl = document.getElementById('todo-list');
-      listEl.innerHTML = todos.map(t => {
+      listEl.innerHTML = allTodos.map(t => {
         if (t.isDivider) {
-          return `<div class="font-bold text-slate-700 bg-slate-100 p-1.5 rounded-lg border-l-4 border-indigo-600 flex justify-between items-center my-1">
-            <span>--- ${t.title} ---</span>
-            <button onclick="deleteTodo('${t.id}')" class="text-slate-400 hover:text-red-500 text-[10px]">✕</button>
-          </div>`;
+          return `
+            <div data-todo-id="${t.id}" class="font-bold text-slate-700 bg-slate-100 p-1.5 rounded-lg border-l-4 border-indigo-600 flex justify-between items-center my-1.5">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-grip-vertical drag-handle cursor-grab text-slate-300"></i>
+                <span>--- ${t.title} ---</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="editTodo('${t.id}', '${t.title}')" class="text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen-to-square text-[11px]"></i></button>
+                <button onclick="deleteTodo('${t.id}')" class="text-slate-300 hover:text-red-500 text-[11px]">✕</button>
+              </div>
+            </div>
+          `;
         }
-        return `<div class="flex justify-between items-center p-1.5 bg-slate-50 rounded-lg hover:bg-slate-100">
-          <label class="flex items-center gap-2 cursor-pointer text-xs ${t.done ? 'line-through text-slate-400' : 'text-slate-700'}">
-            <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', ${t.done})" class="rounded text-indigo-600 focus:ring-indigo-500">
-            <span>${t.title}</span>
-          </label>
-          <button onclick="deleteTodo('${t.id}')" class="text-slate-300 hover:text-red-500 text-[10px]">✕</button>
-        </div>`;
+        return `
+          <div data-todo-id="${t.id}" class="flex justify-between items-center p-1.5 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-100">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-grip-vertical drag-handle cursor-grab text-slate-300"></i>
+              <label class="flex items-center gap-2 cursor-pointer text-xs ${t.done ? 'line-through text-slate-400' : 'text-slate-700'}">
+                <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo('${t.id}', ${t.done})" class="rounded text-indigo-600 focus:ring-indigo-500">
+                <span>${t.title}</span>
+              </label>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="editTodo('${t.id}', '${t.title}')" class="text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen-to-square text-[11px]"></i></button>
+              <button onclick="deleteTodo('${t.id}')" class="text-slate-300 hover:text-red-500 text-[11px]">✕</button>
+            </div>
+          </div>
+        `;
       }).join('');
+
+      initTodoSortable();
     });
   </script>
 </body>
