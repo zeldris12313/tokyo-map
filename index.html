@@ -18,6 +18,7 @@
 
   <style>
     #map { height: 320px; width: 100%; border-radius: 1rem; z-index: 1; }
+    #modal-adjust-map { height: 180px; width: 100%; border-radius: 0.75rem; z-index: 1; }
     .card-highlight { animation: highlight 2s ease-in-out; }
     @keyframes highlight {
       0% { transform: scale(1); ring: 4px #4f46e5; }
@@ -92,7 +93,7 @@
         <div id="todo-list" class="space-y-1.5 max-h-80 overflow-y-auto text-xs pt-1"></div>
       </div>
 
-      <!-- 3. 動態 QR Code 區塊 (新增) -->
+      <!-- 3. 動態 QR Code 區塊 -->
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
         <div class="border-b pb-2 flex justify-between items-center">
           <h2 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
@@ -101,16 +102,14 @@
           <span class="text-[10px] text-slate-400">點擊圖片放大</span>
         </div>
 
-        <!-- 上傳表單區域 -->
         <div class="space-y-2 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100 text-xs">
-          <input type="text" id="qr-title-input" placeholder="輸入名稱 (例如: Visit Japan QR / 展望台門票)" class="w-full p-2 bg-white border border-slate-200 rounded-lg outline-none">
+          <input type="text" id="qr-title-input" placeholder="輸入名稱 (例如: Visit Japan QR / 門票)" class="w-full p-2 bg-white border border-slate-200 rounded-lg outline-none">
           <div class="flex gap-1.5 items-center">
             <input type="file" id="qr-file-input" accept="image/*" class="w-full text-[11px] text-slate-500 file:mr-1.5 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700">
             <button onclick="uploadQRCode()" class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold shrink-0 hover:bg-indigo-700">儲存</button>
           </div>
         </div>
 
-        <!-- QR Code 清單卡片列表 -->
         <div id="qr-code-list" class="space-y-2 max-h-80 overflow-y-auto text-xs pt-1"></div>
       </div>
     </aside>
@@ -118,7 +117,7 @@
     <!-- 右側主內容區 -->
     <main class="md:col-span-3 space-y-5">
 
-      <!-- 1. 置頂行程重點備忘框 (含圖片上傳與分隔線) -->
+      <!-- 1. 置頂行程重點備忘框 -->
       <div class="bg-amber-50/90 rounded-2xl p-4 shadow-sm border border-amber-200 space-y-3">
         <div class="flex justify-between items-center">
           <h3 class="font-bold text-amber-900 text-sm flex items-center gap-1.5">
@@ -128,7 +127,6 @@
         </div>
         <textarea id="memo-input" rows="3" placeholder="在此記下 JR Pass 兌換碼、WiFi 密碼、重要行程提醒等..." class="w-full p-2.5 bg-white/80 border border-amber-200/80 rounded-xl text-xs text-slate-700 outline-none focus:ring-2 focus:ring-amber-400"></textarea>
 
-        <!-- 備忘錄操作工具列 -->
         <div class="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-amber-200/60">
           <div class="flex items-center gap-2">
             <label class="bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer flex items-center gap-1 shadow-sm transition">
@@ -142,7 +140,6 @@
           <span class="text-[10px] text-amber-700/70">點擊圖片可放大</span>
         </div>
 
-        <!-- 備忘錄圖片與分隔線展示區 -->
         <div id="memo-items-container" class="space-y-2 pt-1"></div>
       </div>
 
@@ -164,7 +161,7 @@
           <span class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
             <i class="fa-solid fa-map text-indigo-600"></i> 東京區域 Google 地圖總覽
           </span>
-          <span class="text-[10px] text-slate-400">點擊標記預覽 / 拖動 Pin 點校正座標</span>
+          <span class="text-[10px] text-slate-400">點擊標記預覽</span>
         </div>
         <div id="map"></div>
       </div>
@@ -194,11 +191,17 @@
       <form id="place-form" class="p-5 space-y-4 text-sm">
         <input type="hidden" id="edit-id">
 
-        <div class="bg-indigo-50/60 p-3 rounded-xl border border-indigo-100">
-          <label class="block font-medium text-slate-700 mb-1 text-xs">Google Maps 網址 (可自動抓取名稱、座標、分類與區域)</label>
+        <!-- 智慧解析框：支援 Google Maps 網址、或是直接貼上日本地址/店名 -->
+        <div class="bg-indigo-50/60 p-3 rounded-xl border border-indigo-100 space-y-1.5">
+          <div class="flex justify-between items-center">
+            <label class="block font-medium text-slate-700 text-xs">貼上 Google Maps 網址 或 日本地址 / 店名</label>
+            <span id="detect-status" class="text-[10px] text-indigo-600 font-medium"></span>
+          </div>
           <div class="flex gap-2">
-            <input type="url" id="map-url" placeholder="https://www.google.com/maps/place/..." class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
-            <button type="button" id="parse-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700">解析</button>
+            <input type="text" id="map-url" placeholder="貼上網址 或 1 Chome-6-4 Kanda Sakumacho..." class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+            <button type="button" id="parse-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700 flex items-center gap-1 shrink-0">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 自動解析
+            </button>
           </div>
         </div>
 
@@ -218,6 +221,7 @@
           </div>
         </div>
 
+        <!-- 圖片上傳區塊 -->
         <div class="space-y-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
           <label class="block font-medium text-slate-700 text-xs">主封面圖片 (網址或檔案)</label>
           <input type="url" id="image-url" placeholder="貼上封面圖片網址 https://..." class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none">
@@ -236,7 +240,7 @@
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">備註 / 簡介</label>
+          <label class="block font-medium text-slate-700 mb-1">備註 / 簡介 / 日本地址</label>
           <textarea id="notes" rows="2" placeholder="例如：人氣排隊名店，只收現金..." class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
         </div>
 
@@ -245,12 +249,14 @@
           <input type="url" id="nav-link" placeholder="導航連結" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
 
-        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
-          <span class="text-xs font-semibold text-slate-700">座標微調（解析後可直接在地圖上拖動 Pin 點校正）</span>
+        <!-- 座標微調與可拖曳地圖 -->
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+          <span class="text-xs font-semibold text-slate-700 block">座標微調（按住下方地圖上的紅色 Pin 點即可拖拉定位）</span>
           <div class="grid grid-cols-2 gap-2 text-xs">
-            <input type="text" id="lat" placeholder="緯度 Lat" class="p-2 bg-white border rounded-lg">
-            <input type="text" id="lng" placeholder="經度 Lng" class="p-2 bg-white border rounded-lg">
+            <input type="text" id="lat" placeholder="緯度 Lat" class="p-2 bg-white border border-slate-200 rounded-lg">
+            <input type="text" id="lng" placeholder="經度 Lng" class="p-2 bg-white border border-slate-200 rounded-lg">
           </div>
+          <div id="modal-adjust-map" class="border border-slate-200 mt-2"></div>
         </div>
 
         <button type="submit" id="submit-btn" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">儲存景點</button>
@@ -298,7 +304,7 @@
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航</label>
+          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航 (包含座標或地址可展示精簡縮圖)</label>
           <input type="text" id="fh-nav" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
         </div>
 
@@ -346,12 +352,8 @@
     <button onclick="closeLightbox(event, true)" class="absolute top-4 right-4 text-white hover:text-slate-300 text-2xl z-10 p-2">
       <i class="fa-solid fa-xmark"></i>
     </button>
-    <button onclick="prevLightboxImage(event)" class="absolute left-4 text-white hover:text-slate-300 text-3xl z-10 p-2 bg-slate-800/50 rounded-full w-12 h-12 flex items-center justify-center">
-      ‹
-    </button>
-    <button onclick="nextLightboxImage(event)" class="absolute right-4 text-white hover:text-slate-300 text-3xl z-10 p-2 bg-slate-800/50 rounded-full w-12 h-12 flex items-center justify-center">
-      ›
-    </button>
+    <button onclick="prevLightboxImage(event)" class="absolute left-4 text-white hover:text-slate-300 text-3xl z-10 p-2 bg-slate-800/50 rounded-full w-12 h-12 flex items-center justify-center">‹</button>
+    <button onclick="nextLightboxImage(event)" class="absolute right-4 text-white hover:text-slate-300 text-3xl z-10 p-2 bg-slate-800/50 rounded-full w-12 h-12 flex items-center justify-center">›</button>
     <div class="max-w-4xl max-h-[85vh] p-2 flex flex-col items-center">
       <img id="lightbox-img" src="" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl">
       <span id="lightbox-counter" class="text-white text-xs mt-3 bg-slate-800/80 px-3 py-1 rounded-full"></span>
@@ -393,9 +395,11 @@
     let allTodos = [];
     let allQRCodes = [];
     let allMemoItems = [];
+
     let leafletMap = null;
+    let modalAdjustMap = null;
+    let modalAdjustMarker = null;
     let markersMap = {};
-    let adjustMarker = null;
 
     let lightboxImages = [];
     let currentLightboxIndex = 0;
@@ -415,32 +419,58 @@
           subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
           attribution: 'Google Maps'
         }).addTo(leafletMap);
-
-        leafletMap.on('click', (e) => {
-          const { lat, lng } = e.latlng;
-          document.getElementById('lat').value = lat.toFixed(6);
-          document.getElementById('lng').value = lng.toFixed(6);
-          updateAdjustMarker(lat, lng);
-        });
       }
     }
 
-    function updateAdjustMarker(lat, lng) {
-      const position = [parseFloat(lat), parseFloat(lng)];
-      if (adjustMarker) {
-        adjustMarker.setLatLng(position);
-      } else {
-        adjustMarker = L.marker(position, { draggable: true }).addTo(leafletMap);
-        adjustMarker.on('dragend', function (e) {
+    function initModalAdjustMap(lat = 35.6812, lng = 139.7671) {
+      if (!modalAdjustMap) {
+        modalAdjustMap = L.map('modal-adjust-map').setView([lat, lng], 15);
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          maxZoom: 20,
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+        }).addTo(modalAdjustMap);
+
+        modalAdjustMap.on('click', (e) => {
+          updateModalAdjustMarker(e.latlng.lat, e.latlng.lng);
+        });
+      }
+
+      updateModalAdjustMarker(lat, lng);
+      setTimeout(() => {
+        if (modalAdjustMap) modalAdjustMap.invalidateSize();
+      }, 200);
+    }
+
+    function updateModalAdjustMarker(lat, lng) {
+      const latVal = parseFloat(lat);
+      const lngVal = parseFloat(lng);
+      if (isNaN(latVal) || isNaN(lngVal)) return;
+
+      document.getElementById('lat').value = latVal.toFixed(6);
+      document.getElementById('lng').value = lngVal.toFixed(6);
+
+      if (modalAdjustMarker) {
+        modalAdjustMarker.setLatLng([latVal, lngVal]);
+      } else if (modalAdjustMap) {
+        modalAdjustMarker = L.marker([latVal, lngVal], { draggable: true }).addTo(modalAdjustMap);
+        modalAdjustMarker.on('dragend', (e) => {
           const newPos = e.target.getLatLng();
           document.getElementById('lat').value = newPos.lat.toFixed(6);
           document.getElementById('lng').value = newPos.lng.toFixed(6);
         });
       }
-      leafletMap.setView(position, 15);
+      if (modalAdjustMap) modalAdjustMap.setView([latVal, lngVal], 15);
     }
 
-    // 備忘錄 (Memo Box) 自動儲存
+    ['lat', 'lng'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', () => {
+        const lat = parseFloat(document.getElementById('lat').value);
+        const lng = parseFloat(document.getElementById('lng').value);
+        if (!isNaN(lat) && !isNaN(lng)) updateModalAdjustMarker(lat, lng);
+      });
+    });
+
+    // 備忘錄 (Memo Box)
     let memoTimeout = null;
     const memoInput = document.getElementById('memo-input');
     const memoStatus = document.getElementById('memo-status');
@@ -454,7 +484,6 @@
       }, 800);
     });
 
-    // 備忘錄上傳圖片
     window.uploadMemoImage = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -467,7 +496,6 @@
       e.target.value = '';
     };
 
-    // 備忘錄插入分隔線
     window.addMemoDivider = async () => {
       const title = prompt("請輸入分隔線文字:", "重要圖片資訊");
       if (title !== null) {
@@ -483,7 +511,6 @@
       await deleteDoc(doc(db, "memo_items", id));
     };
 
-    // 上傳 QR Code
     window.uploadQRCode = async () => {
       const titleInput = document.getElementById('qr-title-input');
       const fileInput = document.getElementById('qr-file-input');
@@ -572,10 +599,13 @@
       document.getElementById('place-form').reset();
       document.getElementById('edit-id').value = '';
       document.getElementById('modalTitle').innerText = '新增景點 / 食店';
+      document.getElementById('detect-status').innerText = '';
       existingExtraImages = [];
       document.getElementById('extra-images-preview').innerHTML = '';
       populateSelects();
       document.getElementById('placeModal').classList.remove('hidden');
+
+      initModalAdjustMap(35.6812, 139.7671);
     };
 
     window.openEditModal = (id) => {
@@ -585,6 +615,7 @@
       populateSelects();
       document.getElementById('edit-id').value = item.id;
       document.getElementById('modalTitle').innerText = '編輯景點 / 食店';
+      document.getElementById('detect-status').innerText = '';
       document.getElementById('title').value = item.title || '';
       document.getElementById('region-select').value = item.region || regions[0];
       document.getElementById('category-select').value = item.category || categories[0].name;
@@ -598,8 +629,11 @@
       existingExtraImages = item.extraImages || [];
       renderExtraImagesPreview();
 
-      if (item.lat && item.lng) updateAdjustMarker(item.lat, item.lng);
       document.getElementById('placeModal').classList.remove('hidden');
+
+      const targetLat = item.lat || 35.6812;
+      const targetLng = item.lng || 139.7671;
+      initModalAdjustMap(targetLat, targetLng);
     };
 
     function renderExtraImagesPreview() {
@@ -794,69 +828,126 @@
       `).join('');
     }
 
-    // Google Maps 解析
-    document.getElementById('parse-btn').addEventListener('click', () => {
-      const url = document.getElementById('map-url').value.trim();
-      if (!url) return alert('請先貼上網址！');
+    // ⭐ 全新強大解析引擎：同時支援 Google Maps 網址 與 日本地址/店名查詢 ⭐
+    document.getElementById('parse-btn').addEventListener('click', async () => {
+      const inputStr = document.getElementById('map-url').value.trim();
+      const statusEl = document.getElementById('detect-status');
+      if (!inputStr) return alert('請先輸入 Google Maps 網址 或 日本地址/店名！');
 
-      const decodedUrl = decodeURIComponent(url);
-      const placeMatch = decodedUrl.match(/\/place\/([^\/]+)/);
+      statusEl.innerText = '正在智慧解析中...';
+      const isUrl = inputStr.startsWith('http://') || inputStr.startsWith('https://');
+
       let detectedTitle = '';
-      if (placeMatch) {
-        detectedTitle = placeMatch[1].replace(/\+/g, ' ');
-        document.getElementById('title').value = detectedTitle;
+      let detectedLat = null;
+      let detectedLng = null;
+      let detectedAddress = '';
+
+      if (isUrl) {
+        document.getElementById('nav-link').value = inputStr;
+        const decodedUrl = decodeURIComponent(inputStr);
+
+        // 1. 從網址抓店名
+        if (decodedUrl.includes('/place/')) {
+          const placeMatch = decodedUrl.match(/\/place\/([^\/]+)/);
+          if (placeMatch) detectedTitle = placeMatch[1].split('/')[0].replace(/\+/g, ' ');
+        } else if (decodedUrl.includes('q=')) {
+          const qMatch = decodedUrl.match(/q=([^&]+)/);
+          if (qMatch) detectedTitle = qMatch[1].replace(/\+/g, ' ');
+        } else if (decodedUrl.includes('query=')) {
+          const queryMatch = decodedUrl.match(/query=([^&]+)/);
+          if (queryMatch) detectedTitle = queryMatch[1].replace(/\+/g, ' ');
+        }
+
+        // 2. 從網址抓座標
+        const preciseCoordMatch = inputStr.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+        if (preciseCoordMatch) {
+          detectedLat = preciseCoordMatch[1];
+          detectedLng = preciseCoordMatch[2];
+        } else {
+          const coordMatch = inputStr.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || inputStr.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+          if (coordMatch) {
+            detectedLat = coordMatch[1];
+            detectedLng = coordMatch[2];
+          }
+        }
+      } else {
+        // 如果輸入的是純文字 (日本地址或店名)
+        detectedTitle = inputStr.split(',')[0].trim();
+        detectedAddress = inputStr;
+        document.getElementById('notes').value = inputStr;
       }
 
-      let detectedLat = null, detectedLng = null;
-      const preciseCoordMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-      if (preciseCoordMatch) {
-        detectedLat = preciseCoordMatch[1];
-        detectedLng = preciseCoordMatch[2];
-      } else {
-        const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (coordMatch) {
-          detectedLat = coordMatch[1];
-          detectedLng = coordMatch[2];
+      // 3. 如果尚未取得座標，呼叫 OpenStreetMap Nominatim 地理編碼 API 自動搜尋日本地址/店名座標
+      if (!detectedLat || !detectedLng) {
+        try {
+          const query = detectedAddress || detectedTitle || inputStr;
+          const apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+          const res = await fetch(apiUrl, { headers: { 'Accept-Language': 'ja,zh-TW,en' } });
+          const data = await res.json();
+          if (data && data.length > 0) {
+            detectedLat = data[0].lat;
+            detectedLng = data[0].lon;
+            if (!detectedTitle || detectedTitle.length > 30) {
+              detectedTitle = data[0].display_name.split(',')[0];
+            }
+          }
+        } catch (err) {
+          console.warn('Geocoding 失敗:', err);
         }
       }
 
-      if (detectedLat && detectedLng) {
-        document.getElementById('lat').value = detectedLat;
-        document.getElementById('lng').value = detectedLng;
-        updateAdjustMarker(detectedLat, detectedLng);
-      }
-      document.getElementById('nav-link').value = url;
+      // 清理店名多餘字元
+      detectedTitle = detectedTitle.replace(/@.*$/, '').replace(/[\d\.]+,[\d\.]+/g, '').replace(/Google Maps/gi, '').trim();
+      if (detectedTitle) document.getElementById('title').value = detectedTitle;
 
-      const titleAndUrl = (detectedTitle + ' ' + decodedUrl).toLowerCase();
+      if (detectedLat && detectedLng) {
+        updateModalAdjustMarker(detectedLat, detectedLng);
+        statusEl.innerText = '✅ 解析成功！已定位座標';
+      } else {
+        statusEl.innerText = '⚠️ 已抓取店名，座標請手動拖曳';
+      }
+
+      // 4. 智慧分類辨識
+      const allText = (detectedTitle + ' ' + inputStr).toLowerCase();
       let matchedCategory = '';
-      if (/ramen|拉麵|沾麵|sushi|壽司|烤肉|yakiniku|cafe|咖啡|甜點|居酒屋|美食|food|restaurant/i.test(titleAndUrl)) {
-        if (/cafe|咖啡|coffee/i.test(titleAndUrl)) matchedCategory = "咖啡";
+      if (/ramen|拉麵|沾麵|sushi|壽司|烤肉|yakiniku|cafe|咖啡|甜點|居酒屋|美食|food|restaurant|燒肉|鰻魚/i.test(allText)) {
+        if (/cafe|咖啡|coffee/i.test(allText)) matchedCategory = "咖啡";
         else matchedCategory = "美食";
-      } else if (/park|park|shrine|神社|寺|景點|museum|博物館|sky|tower|水族館/i.test(titleAndUrl)) {
+      } else if (/park|park|shrine|神社|寺|景點|museum|博物館|sky|tower|水族館|迪士尼|disney/i.test(allText)) {
         matchedCategory = "景點";
-      } else if (/store|shop|bic|yodobashi|唐吉訶德|donki|購物|商場|mall|outlet/i.test(titleAndUrl)) {
+      } else if (/store|shop|bic|yodobashi|唐吉訶德|donki|購物|商場|mall|outlet|無印|loft/i.test(allText)) {
         matchedCategory = "購物";
       }
 
       if (matchedCategory) {
         const catSelect = document.getElementById('category-select');
-        for (let option of catSelect.options) {
-          if (option.value === matchedCategory) { option.selected = true; break; }
+        for (let opt of catSelect.options) {
+          if (opt.value === matchedCategory) { opt.selected = true; break; }
         }
       }
 
+      // 5. 智慧區域辨識
       let matchedRegion = '';
       regions.forEach(r => {
         const keywords = r.split('/');
         keywords.forEach(kw => {
-          if (kw && titleAndUrl.includes(kw.toLowerCase())) matchedRegion = r;
+          if (kw && allText.includes(kw.toLowerCase())) matchedRegion = r;
         });
       });
 
+      // 針對常見地區補充辨識
+      if (!matchedRegion) {
+        if (/kanda|sakumacho|神田|akihabara|chiyoda/i.test(allText)) matchedRegion = regions.find(r => r.includes('秋葉原') || r.includes('東京')) || '';
+        if (/shinjuku/i.test(allText)) matchedRegion = regions.find(r => r.includes('新宿')) || '';
+        if (/shibuya/i.test(allText)) matchedRegion = regions.find(r => r.includes('澀谷')) || '';
+        if (/asakusa|ueno|taito/i.test(allText)) matchedRegion = regions.find(r => r.includes('淺草') || r.includes('上野')) || '';
+        if (/ginza|chuo/i.test(allText)) matchedRegion = regions.find(r => r.includes('銀座') || r.includes('東京')) || '';
+      }
+
       if (matchedRegion) {
         const regSelect = document.getElementById('region-select');
-        for (let option of regSelect.options) {
-          if (option.value === matchedRegion) { option.selected = true; break; }
+        for (let opt of regSelect.options) {
+          if (opt.value === matchedRegion) { opt.selected = true; break; }
         }
       }
     });
@@ -1190,7 +1281,6 @@
       }
     });
 
-    // 監聽備忘錄圖片與分隔線
     onSnapshot(collection(db, "memo_items"), (snapshot) => {
       allMemoItems = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       allMemoItems.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
@@ -1218,7 +1308,6 @@
       }).join('');
     });
 
-    // 監聽 QR Code 清單
     onSnapshot(collection(db, "qrcodes"), (snapshot) => {
       allQRCodes = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       allQRCodes.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
