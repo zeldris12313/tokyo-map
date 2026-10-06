@@ -49,8 +49,11 @@
         <button id="nav-btn-map" onclick="switchMainTab('map')" class="px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition">
           <i class="fa-solid fa-map-location-dot"></i> 行程地圖
         </button>
-        <button id="nav-btn-expenses" onclick="switchMainTab('expenses')" class="px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition">
+                <button id="nav-btn-expenses" onclick="switchMainTab('expenses')" class="px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition">
           <i class="fa-solid fa-receipt"></i> 記帳與收據
+        </button>
+        <button id="nav-btn-shopping" onclick="switchMainTab('shopping')" class="px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition">
+          <i class="fa-solid fa-bag-shopping"></i> 想買清單相簿
         </button>
       </nav>
     </div>
@@ -288,7 +291,53 @@
         <i class="fa-solid fa-calendar-day text-indigo-600"></i> 各日花費明細記錄 (依日子分組)
       </h4>
       <div id="expenses-by-date-container" class="space-y-5">
-        <!-- 動態依日期分組渲染 -->
+                <!-- 動態依日期分組渲染 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 頁面 3: 想買清單相簿 (Wishlist 網格拖曳) ==================== -->
+  <div id="view-shopping-tab" class="max-w-6xl mx-auto p-6 space-y-6 hidden">
+    <!-- 上傳想買相片表單 -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-bag-shopping text-pink-600"></i> 新增想買/代購物品
+        </h3>
+        <span class="text-[11px] text-slate-400">可拖動相片自由排序位置</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">物品圖片 *</label>
+          <input type="file" id="shop-img-file" accept="image/*" class="w-full p-1 bg-slate-50 border border-slate-200 rounded-lg text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-pink-600 file:text-white file:text-xs file:font-bold hover:file:bg-pink-700">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">名稱 / 品名 *</label>
+          <input type="text" id="shop-title-input" placeholder="例如: Pokémon 玩偶 / 藥妝" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-pink-500">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">備註 / 價格 / 購買地點</label>
+          <input type="text" id="shop-note-input" placeholder="例如: 涉谷 PARCO / 約 ¥3,000" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-pink-500">
+        </div>
+        <div class="flex items-end">
+          <button type="button" onclick="addShoppingItem()" class="w-full bg-pink-600 hover:bg-pink-700 text-white py-2 rounded-lg font-bold shadow-sm transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> 新增至相簿
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 網格相簿展示區 -->
+    <div>
+      <div class="flex justify-between items-center mb-3">
+        <h4 class="font-bold text-slate-700 text-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-images text-pink-600"></i> 想買清單相簿 (<span id="shopping-count">0</span> 件)
+        </h4>
+        <span class="text-[11px] text-slate-400">點擊相片可全螢幕檢視</span>
+      </div>
+      <div id="shopping-album-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <!-- 動態渲染購物卡片 -->
       </div>
     </div>
   </div>
@@ -546,6 +595,7 @@
     let allQRCodes = [];
     let allMemoItems = [];
     let allExpenses = [];
+    let allShoppingItems = [];
 
     let leafletMap = null;
     let modalAdjustMap = null;
@@ -559,21 +609,31 @@
     window.switchMainTab = (tab) => {
       const mapTab = document.getElementById('view-map-tab');
       const expTab = document.getElementById('view-expenses-tab');
+      const shopTab = document.getElementById('view-shopping-tab');
       const btnMap = document.getElementById('nav-btn-map');
       const btnExp = document.getElementById('nav-btn-expenses');
+      const btnShop = document.getElementById('nav-btn-shopping');
+
+      btnMap.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
+      btnExp.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
+      btnShop.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
+
+      mapTab.classList.add('hidden');
+      expTab.classList.add('hidden');
+      shopTab.classList.add('hidden');
 
       if (tab === 'map') {
         mapTab.classList.remove('hidden');
-        expTab.classList.add('hidden');
         btnMap.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition';
-        btnExp.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
         setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); }, 200);
-      } else {
-        mapTab.classList.add('hidden');
+      } else if (tab === 'expenses') {
         expTab.classList.remove('hidden');
         btnExp.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition';
-        btnMap.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
         renderExpensesGroupedByDate();
+      } else if (tab === 'shopping') {
+        shopTab.classList.remove('hidden');
+        btnShop.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition';
+        renderShoppingAlbum();
       }
     };
 
@@ -1407,7 +1467,7 @@
       });
     }
 
-    document.getElementById('place-form').addEventListener('submit', async (e) => {
+        document.getElementById('place-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const editId = document.getElementById('edit-id').value;
       const fileInput = document.getElementById('image-file');
@@ -1426,27 +1486,35 @@
         }
       }
 
+      const latInput = document.getElementById('lat').value.trim();
+      const lngInput = document.getElementById('lng').value.trim();
+
       const placeData = {
-        title: document.getElementById('title').value,
+        title: document.getElementById('title').value.trim(),
         region: document.getElementById('region-select').value,
         category: document.getElementById('category-select').value,
-        imageUrl: finalImg,
+        imageUrl: finalImg || '',
         extraImages: newExtraImages,
-        recommendation: document.getElementById('recommendation').value,
-        notes: document.getElementById('notes').value,
-        navLink: document.getElementById('nav-link').value,
-        lat: parseFloat(document.getElementById('lat').value) || null,
-        lng: parseFloat(document.getElementById('lng').value) || null,
+        recommendation: document.getElementById('recommendation').value.trim(),
+        notes: document.getElementById('notes').value.trim(),
+        navLink: document.getElementById('nav-link').value.trim(),
+        lat: latInput ? parseFloat(latInput) : null,
+        lng: lngInput ? parseFloat(lngInput) : null,
       };
 
-      if (editId) {
-        await updateDoc(doc(db, "places", editId), placeData);
-      } else {
-        placeData.status = 'unvisited';
-        placeData.createdAt = new Date();
-        await addDoc(collection(db, "places"), placeData);
+      try {
+        if (editId) {
+          await updateDoc(doc(db, "places", editId), placeData);
+        } else {
+          placeData.status = 'unvisited';
+          placeData.createdAt = new Date();
+          await addDoc(collection(db, "places"), placeData);
+        }
+        closePlaceModal();
+      } catch (err) {
+        console.error("儲存失敗：", err);
+        alert("儲存景點失敗，請檢查網絡或 Firebase 連線！");
       }
-      closePlaceModal();
     });
 
     document.getElementById('fh-form').addEventListener('submit', async (e) => {
@@ -1834,6 +1902,118 @@
     onSnapshot(collection(db, "expenses"), (snapshot) => {
       allExpenses = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       renderExpensesGroupedByDate();
+    });
+
+    // ===== 想買相簿 (Wishlist) 邏輯 =====
+    window.addShoppingItem = async () => {
+      const fileInput = document.getElementById('shop-img-file');
+      const titleInput = document.getElementById('shop-title-input');
+      const noteInput = document.getElementById('shop-note-input');
+
+      const title = titleInput.value.trim();
+      const note = noteInput.value.trim();
+
+      if (fileInput.files.length === 0) {
+        return alert("請先選取想買物品的圖片！");
+      }
+      if (!title) {
+        return alert("請輸入物品名稱！");
+      }
+
+      const b64 = await getBase64Image(fileInput.files[0]);
+      const currentMaxOrder = allShoppingItems.length;
+
+      await addDoc(collection(db, "shopping_items"), {
+        imageUrl: b64,
+        title: title,
+        note: note,
+        order: currentMaxOrder,
+        createdAt: new Date()
+      });
+
+      fileInput.value = '';
+      titleInput.value = '';
+      noteInput.value = '';
+    };
+
+    window.deleteShoppingItem = async (id) => {
+      if (confirm("確定刪除這件想買物品嗎？")) {
+        await deleteDoc(doc(db, "shopping_items", id));
+      }
+    };
+
+    function renderShoppingAlbum() {
+      const container = document.getElementById('shopping-album-grid');
+      const countEl = document.getElementById('shopping-count');
+      if (countEl) countEl.innerText = allShoppingItems.length;
+
+      if (!container) return;
+
+      if (allShoppingItems.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
+            <i class="fa-solid fa-bag-shopping text-3xl mb-2 text-slate-300 block"></i>
+            暫時未有想買物品相片，即刻喺上方上傳啦！
+          </div>
+        `;
+        return;
+      }
+
+      const allShopImgs = allShoppingItems.map(item => item.imageUrl);
+      const jsonShopImgs = JSON.stringify(allShopImgs).replace(/"/g, '&quot;');
+
+      container.innerHTML = allShoppingItems.map((item, idx) => `
+        <div data-shop-id="${item.id}" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col justify-between group hover:shadow-md transition relative">
+          <!-- 拖曳握把標籤 -->
+          <div class="absolute top-2 left-2 bg-slate-900/60 text-white rounded-md px-1.5 py-0.5 text-[10px] opacity-0 group-hover:opacity-100 transition drag-handle cursor-grab z-10">
+            <i class="fa-solid fa-grip-vertical"></i> 拖動
+          </div>
+          <!-- 刪除按鈕 -->
+          <button onclick="deleteShoppingItem('${item.id}')" class="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-10 text-xs" title="刪除">
+            ✕
+          </button>
+          <!-- 圖片區 (點擊開燈箱) -->
+          <div class="w-full aspect-square overflow-hidden bg-slate-100 cursor-pointer" onclick="openLightbox(${jsonShopImgs}, ${idx})">
+            <img src="${item.imageUrl}" class="w-full h-full object-cover group-hover:scale-105 transition duration-200" alt="${item.title}">
+          </div>
+          <!-- 文字資訊 -->
+          <div class="p-2.5 space-y-1">
+            <div class="font-bold text-slate-800 text-xs truncate" title="${item.title}">${item.title}</div>
+            ${item.note ? `<div class="text-[11px] text-slate-500 line-clamp-2" title="${item.note}">${item.note}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      initShoppingSortable();
+    }
+
+    function initShoppingSortable() {
+      const el = document.getElementById('shopping-album-grid');
+      if (!el || allShoppingItems.length <= 1) return;
+      Sortable.create(el, {
+        handle: '.drag-handle',
+        ghostClass: 'ghost',
+        animation: 150,
+        onEnd: async () => {
+          const newOrderIds = [];
+          el.querySelectorAll('[data-shop-id]').forEach(node => {
+            newOrderIds.push(node.getAttribute('data-shop-id'));
+          });
+          for (let index = 0; index < newOrderIds.length; index++) {
+            await updateDoc(doc(db, "shopping_items", newOrderIds[index]), { order: index });
+          }
+        }
+      });
+    }
+
+    // 監聽想買清單集合並按排序排列
+    onSnapshot(collection(db, "shopping_items"), (snapshot) => {
+      allShoppingItems = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      allShoppingItems.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const shopTab = document.getElementById('view-shopping-tab');
+      if (shopTab && !shopTab.classList.contains('hidden')) {
+        renderShoppingAlbum();
+      }
     });
   </script>
 </body>
