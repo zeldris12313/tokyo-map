@@ -19,6 +19,9 @@
   <!-- SortableJS 拖拉排序套件 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 
+  <!-- Tesseract.js (收據 OCR 自動辨識) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
   <style>
     #map { height: 320px; width: 100%; border-radius: 1rem; z-index: 1; }
     #modal-adjust-map { height: 220px; width: 100%; border-radius: 0.75rem; z-index: 1; }
@@ -34,12 +37,24 @@
 </head>
 <body class="bg-[#f3f4f6] text-slate-800 font-sans min-h-screen">
 
-  <!-- 頂部 Header -->
-  <header class="bg-[#4f46e5] text-white px-6 py-3 shadow-md flex justify-between items-center sticky top-0 z-40">
-    <div class="flex items-center gap-2">
-      <i class="fa-regular fa-compass text-xl"></i>
-      <h1 class="text-lg font-bold">東京自由行地圖筆記</h1>
+  <!-- 頂部 Header 與分頁切換 -->
+  <header class="bg-[#4f46e5] text-white px-6 py-3 shadow-md flex flex-wrap justify-between items-center sticky top-0 z-40 gap-3">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2">
+        <i class="fa-regular fa-compass text-xl"></i>
+        <h1 class="text-lg font-bold">東京自由行地圖筆記</h1>
+      </div>
+      <!-- 主分頁按鈕 -->
+      <nav class="flex items-center bg-indigo-700/70 p-1 rounded-xl text-xs font-bold gap-1">
+        <button id="nav-btn-map" onclick="switchMainTab('map')" class="px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition">
+          <i class="fa-solid fa-map-location-dot"></i> 行程地圖
+        </button>
+        <button id="nav-btn-expenses" onclick="switchMainTab('expenses')" class="px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition">
+          <i class="fa-solid fa-receipt"></i> 記帳與收據
+        </button>
+      </nav>
     </div>
+
     <div class="flex items-center gap-2">
       <button onclick="openFHModal('flight')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
         <i class="fa-solid fa-plane"></i> + 新增航班
@@ -47,14 +62,14 @@
       <button onclick="openFHModal('hotel')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
         <i class="fa-solid fa-hotel"></i> + 新增酒店
       </button>
-      <button onclick="openAddModal()" class="bg-[#facc15] hover:bg-yellow-400 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1 shadow-sm transition">
+      <button onclick="openAddModal()" class="bg-[#facc15] hover:bg-yellow-400 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-sm transition">
         <i class="fa-solid fa-circle-plus"></i> 新增景點/食店
       </button>
     </div>
   </header>
 
-  <!-- 主體內容 -->
-  <div class="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+  <!-- ==================== 頁面 1: 行程地圖主畫面 ==================== -->
+  <div id="view-map-tab" class="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
 
     <!-- 左側邊欄 -->
     <aside class="md:col-span-1 space-y-5">
@@ -183,7 +198,107 @@
     </main>
   </div>
 
-  <!-- Modal 1: 新增/編輯景點 -->
+  <!-- ==================== 頁面 2: 旅程記帳與收據管理分頁 ==================== -->
+  <div id="view-expenses-tab" class="max-w-6xl mx-auto p-6 space-y-6 hidden">
+    <!-- 頂部概覽卡片 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 font-bold block">總支出 (日圓 JPY)</span>
+          <span id="total-expense-jpy" class="text-2xl font-black text-indigo-600">¥ 0</span>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-lg">
+          <i class="fa-solid fa-yen-sign"></i>
+        </div>
+      </div>
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 font-bold block">總筆數</span>
+          <span id="total-receipts-count" class="text-2xl font-black text-slate-700">0 筆</span>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-lg">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+        </div>
+      </div>
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 font-bold block">目前篩選日期</span>
+          <span id="current-filter-date-label" class="text-base font-bold text-slate-800">全部日期</span>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-lg">
+          <i class="fa-regular fa-calendar-days"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 上傳與辨識收據表單卡片 -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+          <i class="fa-solid fa-camera text-indigo-600"></i> 上傳收據 / 新增花費
+        </h3>
+        <span id="ocr-status" class="text-xs text-indigo-600 font-bold"></span>
+      </div>
+
+      <form id="expense-form" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <!-- 檔案上傳與自動辨識 -->
+        <div class="md:col-span-3 bg-indigo-50/60 p-4 rounded-xl border border-indigo-100 space-y-2">
+          <div class="flex justify-between items-center">
+            <label class="block font-bold text-slate-700 text-xs">📸 上傳收據相片 (自動偵測品項與花費金額)</label>
+            <span class="text-[10px] text-slate-400">支援日文/英文/中文收據辨識</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <input type="file" id="receipt-image-file" accept="image/*" class="flex-1 p-1 bg-white border border-slate-200 rounded-lg text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white file:text-xs file:font-bold hover:file:bg-indigo-700">
+            <button type="button" onclick="scanReceiptOCR()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-1.5 shrink-0 shadow-sm">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 掃描辨識收據
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">消費日期 *</label>
+          <input type="date" id="exp-date" required class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">品項 / 店家 *</label>
+          <input type="text" id="exp-title" placeholder="例如: 7-Eleven 零食 / 松本清" required class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">金額 (日圓 JPY) *</label>
+          <input type="number" id="exp-amount" placeholder="例如: 1580" required class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-bold">
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block font-medium text-slate-700 mb-1">詳細項目 / 備註</label>
+          <input type="text" id="exp-items" placeholder="例如: 水果軟糖 x2, 綠茶, 飯糰..." class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="flex items-end">
+          <button type="submit" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition">
+            儲存此筆花費
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 日期篩選頁籤與收據清單 -->
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h4 class="font-bold text-slate-800 text-sm">收據歷史列表</h4>
+        <div id="expense-day-filters" class="flex items-center gap-1.5 overflow-x-auto text-xs pb-1">
+          <!-- 動態渲染日期篩選 -->
+        </div>
+      </div>
+
+      <div id="expenses-cards-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- 動態渲染收據卡片 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Modal 1: 新增/編輯景點 ==================== -->
   <div id="placeModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
       <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
@@ -260,7 +375,7 @@
           <input type="url" id="nav-link" placeholder="導航連結" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
 
-        <!-- ⭐ 座標微調 + 快速車站跳轉與精準地圖 ⭐ -->
+        <!-- ⭐ 座標微調 + 自動讀取已有車站快捷鈕 ⭐ -->
         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
           <div class="flex justify-between items-center">
             <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -269,24 +384,18 @@
             <span class="text-[10px] text-slate-400">可用左上角 +/- 放大縮小</span>
           </div>
 
-          <!-- 手入地址或車站範圍跳轉列 -->
+          <!-- 快速跳轉列 -->
           <div class="bg-white p-2 rounded-xl border border-slate-200 space-y-1.5">
             <div class="flex gap-1.5">
-              <input type="text" id="jump-station-input" placeholder="輸入車站或地標 (例如: 秋葉原、澀谷站)" class="flex-1 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+              <input type="text" id="jump-station-input" placeholder="輸入自訂車站/地標手動尋找" class="flex-1 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
               <button type="button" onclick="jumpToLocation()" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-900 shrink-0">
                 跳轉範圍
               </button>
             </div>
-            <!-- 常用熱門車站捷徑標籤 (一鍵直達) -->
+            <!-- 動態自動渲染你已入的所有主要車站快捷鈕 -->
             <div class="flex flex-wrap items-center gap-1 pt-0.5 text-[11px]">
-              <span class="text-slate-400 text-[10px]">快捷:</span>
-              <button type="button" onclick="quickJump('秋葉原')" class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-100 font-medium">秋葉原</button>
-              <button type="button" onclick="quickJump('新宿')" class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-100 font-medium">新宿</button>
-              <button type="button" onclick="quickJump('澀谷')" class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-100 font-medium">澀谷</button>
-              <button type="button" onclick="quickJump('池袋')" class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-100 font-medium">池袋</button>
-              <button type="button" onclick="quickJump('淺草')" class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-100 font-medium">淺草</button>
-              <button type="button" onclick="quickJump('上野')" class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-100 font-medium">上野</button>
-              <button type="button" onclick="quickJump('東京站')" class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-100 font-medium">東京站</button>
+              <span class="text-slate-400 text-[10px]">我的區域:</span>
+              <div id="modal-dynamic-station-shortcuts" class="flex flex-wrap gap-1"></div>
             </div>
           </div>
 
@@ -295,7 +404,6 @@
             <input type="text" id="lng" placeholder="經度 Lng" class="p-2 bg-white border border-slate-200 rounded-lg">
           </div>
 
-          <!-- Modal 專屬獨立可拖動地圖 (已啟用 zoomControl 縮放按鈕) -->
           <div id="modal-adjust-map" class="border border-slate-200"></div>
         </div>
 
@@ -344,7 +452,7 @@
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航 (包含座標或地址可展示精簡縮圖)</label>
+          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航</label>
           <input type="text" id="fh-nav" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
         </div>
 
@@ -403,7 +511,7 @@
   <!-- Firebase SDK & JS Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
@@ -426,30 +534,6 @@
       { name: "購物", icon: "fa-bag-shopping", color: "bg-pink-100 text-pink-800" }
     ];
 
-    // 東京主要熱門車站精確座標庫 (保證不偏離、零誤差)
-    const TOKYO_STATIONS = {
-      "秋葉原": [35.698383, 139.773072],
-      "秋葉原站": [35.698383, 139.773072],
-      "新宿": [35.690921, 139.700258],
-      "新宿站": [35.690921, 139.700258],
-      "澀谷": [35.658034, 139.701636],
-      "澀谷站": [35.658034, 139.701636],
-      "池袋": [35.729503, 139.710900],
-      "池袋站": [35.729503, 139.710900],
-      "淺草": [35.712607, 139.798330],
-      "淺草站": [35.712607, 139.798330],
-      "上野": [35.714167, 139.777409],
-      "上野站": [35.714167, 139.777409],
-      "東京": [35.681236, 139.767125],
-      "東京站": [35.681236, 139.767125],
-      "銀座": [35.671989, 139.763965],
-      "原宿": [35.670168, 139.702687],
-      "表參道": [35.665247, 139.712314],
-      "六本木": [35.662836, 139.731443],
-      "築地": [35.665500, 139.770700],
-      "台場": [35.626800, 139.774500]
-    };
-
     let regions = defaultRegions;
     let categories = defaultCategories;
     let currentRegion = 'all';
@@ -459,6 +543,8 @@
     let allTodos = [];
     let allQRCodes = [];
     let allMemoItems = [];
+    let allExpenses = [];
+    let selectedExpenseDate = 'all';
 
     let leafletMap = null;
     let modalAdjustMap = null;
@@ -467,6 +553,28 @@
 
     let lightboxImages = [];
     let currentLightboxIndex = 0;
+
+    // 分頁切換邏輯 (行程地圖 vs 記帳收據)
+    window.switchMainTab = (tab) => {
+      const mapTab = document.getElementById('view-map-tab');
+      const expTab = document.getElementById('view-expenses-tab');
+      const btnMap = document.getElementById('nav-btn-map');
+      const btnExp = document.getElementById('nav-btn-expenses');
+
+      if (tab === 'map') {
+        mapTab.classList.remove('hidden');
+        expTab.classList.add('hidden');
+        btnMap.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition';
+        btnExp.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
+        setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); }, 200);
+      } else {
+        mapTab.classList.add('hidden');
+        expTab.classList.remove('hidden');
+        btnExp.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition';
+        btnMap.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
+        renderExpenses();
+      }
+    };
 
     async function saveCloudConfig() {
       await setDoc(doc(db, "settings", "app_config"), {
@@ -486,11 +594,10 @@
       }
     }
 
-    // 初始化 Modal 內部的拖拉標記小地圖 (已啟用 zoomControl 縮放鈕)
     function initModalAdjustMap(lat = 35.6812, lng = 139.7671) {
       if (!modalAdjustMap) {
         modalAdjustMap = L.map('modal-adjust-map', {
-          zoomControl: true, // 明確啟用放大縮小按鈕
+          zoomControl: true,
           scrollWheelZoom: true
         }).setView([lat, lng], 16);
 
@@ -505,6 +612,7 @@
       }
 
       updateModalAdjustMarker(lat, lng);
+      renderModalStationShortcuts();
       setTimeout(() => {
         if (modalAdjustMap) modalAdjustMap.invalidateSize();
       }, 200);
@@ -531,7 +639,17 @@
       if (modalAdjustMap) modalAdjustMap.setView([latVal, lngVal], zoomLevel);
     }
 
-    // ⭐ 車站/地標範圍精確跳轉邏輯 ⭐
+    // ⭐ 動態渲染已入車站快捷鈕 ⭐
+    function renderModalStationShortcuts() {
+      const container = document.getElementById('modal-dynamic-station-shortcuts');
+      if (!container) return;
+      container.innerHTML = regions.map(r => `
+        <button type="button" onclick="quickJump('${r}')" class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded hover:bg-indigo-100 font-medium text-[10px]">
+          ${r}
+        </button>
+      `).join('');
+    }
+
     window.jumpToLocation = async () => {
       const query = document.getElementById('jump-station-input').value.trim();
       if (!query) return alert('請輸入欲跳轉的車站或地標名稱！');
@@ -544,15 +662,6 @@
     };
 
     async function executeJump(query) {
-      // 1. 優先比對內置精準車站座標庫 (零誤差直達秋葉原/新宿等)
-      for (const [name, coords] of Object.entries(TOKYO_STATIONS)) {
-        if (query.includes(name) || name.includes(query)) {
-          updateModalAdjustMarker(coords[0], coords[1], 17);
-          return;
-        }
-      }
-
-      // 2. 若不在預設庫中，調用 Nominatim 精準鎖定「東京都」範圍
       try {
         const fullQuery = query.includes('Tokyo') || query.includes('東京') ? query : `${query} Tokyo Japan`;
         const apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullQuery)}&limit=1`;
@@ -561,12 +670,169 @@
         if (data && data.length > 0) {
           updateModalAdjustMarker(parseFloat(data[0].lat), parseFloat(data[0].lon), 16);
         } else {
-          alert('找不到該地標範圍，請嘗試更具體地名（例如：秋葉原站、上野恩賜公園）。');
+          alert('找不到該地標範圍，請嘗試更具體地名。');
         }
       } catch (err) {
         alert('跳轉失敗，請確認網絡連接。');
       }
     }
+
+    // ⭐ Tesseract.js 收據 OCR 自動辨識功能 ⭐
+    window.scanReceiptOCR = async () => {
+      const fileInput = document.getElementById('receipt-image-file');
+      const statusEl = document.getElementById('ocr-status');
+
+      if (fileInput.files.length === 0) {
+        return alert("請先選取收據相片！");
+      }
+
+      statusEl.innerText = "🔍 正在自動辨識收據文字中，請稍候...";
+      try {
+        const file = fileInput.files[0];
+        const { data: { text } } = await Tesseract.recognize(file, 'jpn+eng', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              statusEl.innerText = `🔍 辨識進度: ${Math.round(m.progress * 100)}%`;
+            }
+          }
+        });
+
+        statusEl.innerText = "✅ 辨識完成！已自動填入";
+
+        // 1. 自動偵測金額 (尋找合計、小計、Total、¥ 或帶逗號的數字)
+        const amountRegex = /(?:合計|小計|TOTAL|Total|JPY|¥|税込|支付|金額)[\s:¥]*([0-9,]+)/i;
+        const match = text.match(amountRegex);
+        if (match) {
+          const parsedAmount = match[1].replace(/,/g, '');
+          document.getElementById('exp-amount').value = parsedAmount;
+        } else {
+          // 次選方案：抓取文字中最大的有效金額數字
+          const allNums = text.match(/\b\d{2,6}\b/g);
+          if (allNums) {
+            const maxVal = Math.max(...allNums.map(n => parseInt(n)).filter(n => n < 500000));
+            if (maxVal > 0) document.getElementById('exp-amount').value = maxVal;
+          }
+        }
+
+        // 2. 自動抓取店家名稱 (取收據前幾行文字)
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1);
+        if (lines.length > 0) {
+          document.getElementById('exp-title').value = lines[0].substring(0, 30);
+          document.getElementById('exp-items').value = lines.slice(1, 4).join(', ').substring(0, 80);
+        }
+
+        // 自動設為今天日期 (若未填)
+        if (!document.getElementById('exp-date').value) {
+          document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+        }
+
+      } catch (err) {
+        console.error(err);
+        statusEl.innerText = "⚠ 辨識失敗，請手動輸入金額與品項";
+      }
+    };
+
+    // 儲存花費
+    document.getElementById('expense-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('receipt-image-file');
+      let receiptImg = '';
+
+      if (fileInput.files.length > 0) {
+        receiptImg = await getBase64Image(fileInput.files[0]);
+      }
+
+      const expenseData = {
+        date: document.getElementById('exp-date').value,
+        title: document.getElementById('exp-title').value,
+        amount: parseFloat(document.getElementById('exp-amount').value) || 0,
+        items: document.getElementById('exp-items').value,
+        receiptImg: receiptImg,
+        createdAt: new Date()
+      };
+
+      await addDoc(collection(db, "expenses"), expenseData);
+
+      document.getElementById('expense-form').reset();
+      document.getElementById('ocr-status').innerText = '';
+      alert("收據花費已成功儲存！");
+    });
+
+    window.deleteExpense = async (id) => {
+      if (confirm("確定刪除此筆花費與收據嗎？")) {
+        await deleteDoc(doc(db, "expenses", id));
+      }
+    };
+
+    // 渲染記帳花費與分日篩選列表
+    function renderExpenses() {
+      // 1. 統計總額
+      const totalJPY = allExpenses.reduce((sum, item) => sum + (item.amount || 0), 0);
+      document.getElementById('total-expense-jpy').innerText = `¥ ${totalJPY.toLocaleString()}`;
+      document.getElementById('total-receipts-count').innerText = `${allExpenses.length} 筆`;
+
+      // 2. 獲取所有獨特日期並排序
+      const dates = [...new Set(allExpenses.map(e => e.date).filter(Boolean))].sort();
+
+      const filterBox = document.getElementById('expense-day-filters');
+      let filterHTML = `
+        <button onclick="setExpenseDateFilter('all')" class="px-3 py-1.5 rounded-full font-bold transition whitespace-nowrap ${selectedExpenseDate === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+          全部 (${allExpenses.length})
+        </button>
+      `;
+
+      dates.forEach((d, idx) => {
+        const count = allExpenses.filter(e => e.date === d).length;
+        const active = selectedExpenseDate === d;
+        filterHTML += `
+          <button onclick="setExpenseDateFilter('${d}')" class="px-3 py-1.5 rounded-full font-bold transition whitespace-nowrap ${active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+            Day ${idx + 1} (${d}) · ${count}筆
+          </button>
+        `;
+      });
+      filterBox.innerHTML = filterHTML;
+      document.getElementById('current-filter-date-label').innerText = selectedExpenseDate === 'all' ? '全部日期' : selectedExpenseDate;
+
+      // 3. 篩選與渲染卡片
+      const filtered = selectedExpenseDate === 'all' ? allExpenses : allExpenses.filter(e => e.date === selectedExpenseDate);
+      const cardsGrid = document.getElementById('expenses-cards-grid');
+
+      cardsGrid.innerHTML = filtered.map(exp => {
+        const jsonImg = exp.receiptImg ? JSON.stringify([exp.receiptImg]).replace(/"/g, '&quot;') : '';
+        return `
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between space-y-3">
+            <div>
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-mono font-bold">
+                  📅 ${exp.date}
+                </span>
+                <span class="text-base font-black text-indigo-600 font-mono">
+                  ¥ ${(exp.amount || 0).toLocaleString()}
+                </span>
+              </div>
+              <h4 class="font-bold text-slate-800 text-sm">${exp.title}</h4>
+              ${exp.items ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">🛒 ${exp.items}</p>` : ''}
+            </div>
+
+            <div class="pt-2 border-t border-slate-50 flex items-center justify-between">
+              ${exp.receiptImg ? `
+                <button type="button" onclick="openLightbox(${jsonImg}, 0)" class="text-xs text-indigo-600 hover:underline flex items-center gap-1 font-medium">
+                  <i class="fa-solid fa-receipt"></i> 查看收據相片
+                </button>
+              ` : '<span class="text-[11px] text-slate-400">無相片</span>'}
+              <button onclick="deleteExpense('${exp.id}')" class="text-slate-300 hover:text-red-500 text-xs">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.setExpenseDateFilter = (date) => {
+      selectedExpenseDate = date;
+      renderExpenses();
+    };
 
     ['lat', 'lng'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => {
@@ -656,7 +922,6 @@
       searchInput.addEventListener(evt, () => renderApp());
     });
 
-    // 燈箱 (Lightbox)
     window.openLightbox = (imagesList, startIndex = 0) => {
       if (!imagesList || imagesList.length === 0) return;
       lightboxImages = imagesList;
@@ -699,7 +964,6 @@
       }
     });
 
-    // Modal 控制
     let existingExtraImages = [];
     window.openAddModal = () => {
       document.getElementById('place-form').reset();
@@ -1423,6 +1687,7 @@
         if (data.regions) regions = data.regions;
         if (data.categories) categories = data.categories;
         renderApp();
+        renderModalStationShortcuts();
       }
     });
 
@@ -1532,6 +1797,13 @@
       }).join('');
 
       initTodoSortable();
+    });
+
+    // 監聽記帳與收據 Firebase 集合
+    onSnapshot(collection(db, "expenses"), (snapshot) => {
+      allExpenses = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      allExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+      renderExpenses();
     });
   </script>
 </body>
