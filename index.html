@@ -198,8 +198,8 @@
     </main>
   </div>
 
-  <!-- ==================== 頁面 2: 旅程記帳與收據管理分頁 ==================== -->
-  <div id="view-expenses-tab" class="max-w-6xl mx-auto p-6 space-y-6 hidden">
+  <!-- ==================== 頁面 2: 旅程記帳與收據管理分頁 (以日期包裹) ==================== -->
+  <div id="view-expenses-tab" class="max-w-5xl mx-auto p-6 space-y-6 hidden">
     <!-- 頂部概覽卡片 -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
@@ -222,8 +222,8 @@
       </div>
       <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
         <div>
-          <span class="text-xs text-slate-400 font-bold block">目前篩選日期</span>
-          <span id="current-filter-date-label" class="text-base font-bold text-slate-800">全部日期</span>
+          <span class="text-xs text-slate-400 font-bold block">天數涵蓋</span>
+          <span id="days-covered-count" class="text-base font-bold text-slate-800">0 天</span>
         </div>
         <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-lg">
           <i class="fa-regular fa-calendar-days"></i>
@@ -241,7 +241,6 @@
       </div>
 
       <form id="expense-form" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-        <!-- 檔案上傳與自動辨識 -->
         <div class="md:col-span-3 bg-indigo-50/60 p-4 rounded-xl border border-indigo-100 space-y-2">
           <div class="flex justify-between items-center">
             <label class="block font-bold text-slate-700 text-xs">📸 上傳收據相片 (自動偵測品項與花費金額)</label>
@@ -283,22 +282,18 @@
       </form>
     </div>
 
-    <!-- 日期篩選頁籤與收據清單 -->
+    <!-- 按日期包裝的收據分組列表 -->
     <div class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h4 class="font-bold text-slate-800 text-sm">收據歷史列表</h4>
-        <div id="expense-day-filters" class="flex items-center gap-1.5 overflow-x-auto text-xs pb-1">
-          <!-- 動態渲染日期篩選 -->
-        </div>
-      </div>
-
-      <div id="expenses-cards-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- 動態渲染收據卡片 -->
+      <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+        <i class="fa-solid fa-calendar-day text-indigo-600"></i> 各日花費明細記錄 (依日子分組)
+      </h4>
+      <div id="expenses-by-date-container" class="space-y-5">
+        <!-- 動態依日期分組渲染 -->
       </div>
     </div>
   </div>
 
-  <!-- ==================== Modal 1: 新增/編輯景點 ==================== -->
+  <!-- ==================== Modal 1: 新增/編輯景點 (以 Google Maps 核心為根基) ==================== -->
   <div id="placeModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
       <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
@@ -309,24 +304,33 @@
       <form id="place-form" class="p-5 space-y-4 text-sm">
         <input type="hidden" id="edit-id">
 
-        <!-- 店名/網址/Plus Code 搜尋 -->
-        <div class="bg-indigo-50/70 p-3 rounded-xl border border-indigo-200 space-y-2">
+        <!-- ⭐ Google Maps 原生根基搜尋器 ⭐ -->
+        <div class="bg-indigo-50/70 p-3.5 rounded-xl border border-indigo-200 space-y-2.5">
           <div class="flex justify-between items-center">
-            <label class="block font-bold text-indigo-900 text-xs flex items-center gap-1">
-              <i class="fa-solid fa-magnifying-glass-location text-indigo-600"></i> 輸入店名或網址搜尋 (可直接選取)
+            <label class="block font-bold text-indigo-950 text-xs flex items-center gap-1.5">
+              <i class="fa-brands fa-google text-indigo-600"></i> Google Maps / Plus Code 智慧搜尋定位
             </label>
-            <span id="detect-status" class="text-[10px] text-indigo-600 font-medium"></span>
+            <span id="detect-status" class="text-[10px] text-indigo-700 font-bold"></span>
           </div>
-          <div class="flex gap-2">
-            <input type="text" id="map-url" placeholder="輸入店名 (如: 風雲兒) 或 貼上網址 / Plus Code" class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+
+          <div class="flex gap-1.5">
+            <input type="text" id="map-url" placeholder="貼上 Plus Code (如 MQXC+8M)、Maps 網址 或店名" class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
             <button type="button" id="parse-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 flex items-center gap-1 shrink-0">
-              <i class="fa-solid fa-magnifying-glass"></i> 搜尋店家
+              <i class="fa-solid fa-bolt"></i> 自動解析
+            </button>
+          </div>
+
+          <!-- 直接在 Google Maps 打開搜尋連結 -->
+          <div class="flex items-center justify-between text-[11px] pt-0.5">
+            <span class="text-slate-500">找不到店名？</span>
+            <button type="button" onclick="openGoogleMapsSearch()" class="text-indigo-600 hover:underline font-bold flex items-center gap-1">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> 在 Google Maps 尋找並複製 Plus Code
             </button>
           </div>
 
           <!-- 搜尋候選列表 -->
-          <div id="search-candidates-box" class="hidden bg-white rounded-xl border border-indigo-200 p-2 shadow-sm space-y-1 max-h-48 overflow-y-auto text-xs">
-            <div class="text-[11px] text-slate-400 px-1 pb-1 border-b">請點擊符合的店家進行自動填寫：</div>
+          <div id="search-candidates-box" class="hidden bg-white rounded-xl border border-indigo-200 p-2 shadow-sm space-y-1 max-h-44 overflow-y-auto text-xs">
+            <div class="text-[11px] text-slate-400 px-1 pb-1 border-b">點擊符合項目自動填寫：</div>
             <div id="search-candidates-list" class="space-y-1"></div>
           </div>
         </div>
@@ -375,7 +379,7 @@
           <input type="url" id="nav-link" placeholder="導航連結" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
 
-        <!-- ⭐ 座標微調 + 自動讀取已有車站快捷鈕 ⭐ -->
+        <!-- 座標微調 + 自動讀取已有車站快捷鈕 -->
         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
           <div class="flex justify-between items-center">
             <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -384,7 +388,6 @@
             <span class="text-[10px] text-slate-400">可用左上角 +/- 放大縮小</span>
           </div>
 
-          <!-- 快速跳轉列 -->
           <div class="bg-white p-2 rounded-xl border border-slate-200 space-y-1.5">
             <div class="flex gap-1.5">
               <input type="text" id="jump-station-input" placeholder="輸入自訂車站/地標手動尋找" class="flex-1 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
@@ -392,7 +395,6 @@
                 跳轉範圍
               </button>
             </div>
-            <!-- 動態自動渲染你已入的所有主要車站快捷鈕 -->
             <div class="flex flex-wrap items-center gap-1 pt-0.5 text-[11px]">
               <span class="text-slate-400 text-[10px]">我的區域:</span>
               <div id="modal-dynamic-station-shortcuts" class="flex flex-wrap gap-1"></div>
@@ -452,7 +454,7 @@
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航</label>
+          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航 (包含座標或地址可展示精簡縮圖)</label>
           <input type="text" id="fh-nav" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
         </div>
 
@@ -544,7 +546,6 @@
     let allQRCodes = [];
     let allMemoItems = [];
     let allExpenses = [];
-    let selectedExpenseDate = 'all';
 
     let leafletMap = null;
     let modalAdjustMap = null;
@@ -554,7 +555,7 @@
     let lightboxImages = [];
     let currentLightboxIndex = 0;
 
-    // 分頁切換邏輯 (行程地圖 vs 記帳收據)
+    // 分頁切換邏輯
     window.switchMainTab = (tab) => {
       const mapTab = document.getElementById('view-map-tab');
       const expTab = document.getElementById('view-expenses-tab');
@@ -572,7 +573,7 @@
         expTab.classList.remove('hidden');
         btnExp.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition';
         btnMap.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
-        renderExpenses();
+        renderExpensesGroupedByDate();
       }
     };
 
@@ -639,7 +640,6 @@
       if (modalAdjustMap) modalAdjustMap.setView([latVal, lngVal], zoomLevel);
     }
 
-    // ⭐ 動態渲染已入車站快捷鈕 ⭐
     function renderModalStationShortcuts() {
       const container = document.getElementById('modal-dynamic-station-shortcuts');
       if (!container) return;
@@ -677,7 +677,192 @@
       }
     }
 
-    // ⭐ Tesseract.js 收據 OCR 自動辨識功能 ⭐
+    // ⭐ 在 Google Maps 打開搜尋 ⭐
+    window.openGoogleMapsSearch = () => {
+      const val = document.getElementById('map-url').value.trim() || document.getElementById('title').value.trim();
+      const q = encodeURIComponent(val ? `${val} 東京` : '東京');
+      window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
+    };
+
+    // ⭐ Google Maps 原生根基與 Plus Code 自動解析 ⭐
+    let searchCandidates = [];
+    document.getElementById('parse-btn').addEventListener('click', async () => {
+      const inputStr = document.getElementById('map-url').value.trim();
+      const statusEl = document.getElementById('detect-status');
+      const boxEl = document.getElementById('search-candidates-box');
+      const listEl = document.getElementById('search-candidates-list');
+
+      if (!inputStr) return alert('請輸入 Plus Code、Google Maps 網址 或店名！');
+
+      statusEl.innerText = '正在解析中...';
+      boxEl.classList.add('hidden');
+      listEl.innerHTML = '';
+
+      // 1. 優先檢測 Plus Code (Google 官方核心演算法)
+      const plusCodeRegex = /([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})/i;
+      const plusMatch = inputStr.match(plusCodeRegex);
+      if (plusMatch && typeof OpenLocationCode !== 'undefined') {
+        const rawCode = plusMatch[1].toUpperCase();
+        try {
+          if (OpenLocationCode.isValid(rawCode)) {
+            let fullCode = OpenLocationCode.isShort(rawCode) ? OpenLocationCode.recoverNearest(rawCode, 35.6812, 139.7671) : rawCode;
+            const coord = OpenLocationCode.decode(fullCode);
+            updateModalAdjustMarker(coord.latitudeCenter, coord.longitudeCenter, 17);
+            
+            const cleanTitle = inputStr.replace(plusCodeRegex, '').replace(/,/g, '').trim();
+            if (cleanTitle) {
+              document.getElementById('title').value = cleanTitle;
+              document.getElementById('notes').value = cleanTitle;
+            }
+            document.getElementById('nav-link').value = `https://www.google.com/maps/search/?api=1&query=${coord.latitudeCenter},${coord.longitudeCenter}`;
+            statusEl.innerText = '🎯 Plus Code 零誤差定位成功！';
+            autoDetectCategoryAndRegion(inputStr);
+            return;
+          }
+        } catch (e) {}
+      }
+
+      // 2. 檢測 Google Maps 網址
+      const isUrl = inputStr.startsWith('http://') || inputStr.startsWith('https://');
+      let searchQuery = inputStr;
+
+      if (isUrl) {
+        document.getElementById('nav-link').value = inputStr;
+        const decodedUrl = decodeURIComponent(inputStr);
+
+        let detectedTitle = '';
+        if (decodedUrl.includes('/place/')) {
+          const match = decodedUrl.match(/\/place\/([^\/]+)/);
+          if (match) detectedTitle = match[1].split('/')[0].replace(/\+/g, ' ');
+        } else if (decodedUrl.includes('q=')) {
+          const match = decodedUrl.match(/q=([^&]+)/);
+          if (match) detectedTitle = match[1].replace(/\+/g, ' ');
+        } else if (decodedUrl.includes('query=')) {
+          const match = decodedUrl.match(/query=([^&]+)/);
+          if (match) detectedTitle = match[1].replace(/\+/g, ' ');
+        }
+
+        detectedTitle = detectedTitle.replace(/@.*$/, '').replace(/[\d\.]+,[\d\.]+/g, '').replace(/Google Maps/gi, '').trim();
+        if (detectedTitle) searchQuery = detectedTitle;
+
+        // 提取網址座標
+        const preciseCoordMatch = inputStr.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+        const coordMatch = preciseCoordMatch || inputStr.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || inputStr.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (coordMatch) {
+          updateModalAdjustMarker(coordMatch[1], coordMatch[2], 17);
+          if (detectedTitle) {
+            document.getElementById('title').value = detectedTitle;
+            document.getElementById('notes').value = detectedTitle;
+          }
+          statusEl.innerText = '✅ Maps 網址定位成功！';
+          autoDetectCategoryAndRegion(detectedTitle || inputStr);
+          return;
+        }
+      }
+
+      // 3. 一般文字店名搜尋
+      try {
+        const queryWithTokyo = searchQuery.includes('Tokyo') || searchQuery.includes('東京') ? searchQuery : `${searchQuery} Tokyo Japan`;
+        const apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryWithTokyo)}&limit=6&addressdetails=1`;
+        const res = await fetch(apiUrl, { headers: { 'Accept-Language': 'zh-TW,ja,en' } });
+        searchCandidates = await res.json();
+
+        if (searchCandidates && searchCandidates.length > 0) {
+          statusEl.innerText = `找到 ${searchCandidates.length} 間店家，請點選：`;
+          boxEl.classList.remove('hidden');
+
+          listEl.innerHTML = searchCandidates.map((item, idx) => {
+            const shortName = item.name || item.display_name.split(',')[0];
+            const address = item.display_name;
+            return `
+              <div onclick="selectCandidate(${idx})" class="p-2 hover:bg-indigo-50 rounded-lg cursor-pointer transition border border-slate-100 flex flex-col gap-0.5">
+                <div class="font-bold text-slate-800 text-xs flex items-center justify-between">
+                  <span>📍 ${shortName}</span>
+                  <span class="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">選擇</span>
+                </div>
+                <div class="text-[11px] text-slate-500 truncate">${address}</div>
+              </div>
+            `;
+          }).join('');
+
+          selectCandidate(0, false);
+        } else {
+          statusEl.innerText = '❌ 找不到該店名，請點上方在 Google Maps 查詢';
+        }
+      } catch (err) {
+        statusEl.innerText = '⚠️ 搜尋失敗，請手動拖曳地圖定位';
+      }
+    });
+
+    window.selectCandidate = (idx, hideBox = true) => {
+      const item = searchCandidates[idx];
+      if (!item) return;
+
+      const shortName = item.name || item.display_name.split(',')[0];
+      document.getElementById('title').value = shortName;
+      document.getElementById('notes').value = item.display_name;
+
+      updateModalAdjustMarker(item.lat, item.lon, 17);
+      document.getElementById('detect-status').innerText = `✅ 已選取：${shortName}`;
+
+      if (!document.getElementById('nav-link').value) {
+        document.getElementById('nav-link').value = `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`;
+      }
+
+      autoDetectCategoryAndRegion(item.display_name + ' ' + shortName);
+
+      if (hideBox) {
+        document.getElementById('search-candidates-box').classList.add('hidden');
+      }
+    };
+
+    function autoDetectCategoryAndRegion(text) {
+      const allText = text.toLowerCase();
+
+      let matchedCategory = '';
+      if (/ramen|拉麵|沾麵|sushi|壽司|烤肉|yakiniku|cafe|咖啡|甜點|居酒屋|美食|food|restaurant|燒肉|鰻魚|天婦羅|和牛/i.test(allText)) {
+        if (/cafe|咖啡|coffee/i.test(allText)) matchedCategory = "咖啡";
+        else matchedCategory = "美食";
+      } else if (/park|park|shrine|神社|寺|景點|museum|博物館|sky|tower|水族館|迪士尼|disney/i.test(allText)) {
+        matchedCategory = "景點";
+      } else if (/store|shop|bic|yodobashi|唐吉訶德|donki|購物|商場|mall|outlet|無印|loft|animate/i.test(allText)) {
+        matchedCategory = "購物";
+      }
+
+      if (matchedCategory) {
+        const catSelect = document.getElementById('category-select');
+        for (let opt of catSelect.options) {
+          if (opt.value === matchedCategory) { opt.selected = true; break; }
+        }
+      }
+
+      let matchedRegion = '';
+      regions.forEach(r => {
+        const keywords = r.split('/');
+        keywords.forEach(kw => {
+          if (kw && allText.includes(kw.toLowerCase())) matchedRegion = r;
+        });
+      });
+
+      if (!matchedRegion) {
+        if (/kanda|sakumacho|神田|akihabara|chiyoda|千代田/i.test(allText)) matchedRegion = regions.find(r => r.includes('秋葉原') || r.includes('東京')) || '';
+        if (/shinjuku|新宿/i.test(allText)) matchedRegion = regions.find(r => r.includes('新宿')) || '';
+        if (/shibuya|澀谷|涉谷/i.test(allText)) matchedRegion = regions.find(r => r.includes('澀谷')) || '';
+        if (/asakusa|ueno|taito|淺草|上野|台東/i.test(allText)) matchedRegion = regions.find(r => r.includes('淺草') || r.includes('上野')) || '';
+        if (/ginza|chuo|銀座|中央區/i.test(allText)) matchedRegion = regions.find(r => r.includes('銀座') || r.includes('東京')) || '';
+        if (/ikebukuro|池袋/i.test(allText)) matchedRegion = regions.find(r => r.includes('池袋')) || '';
+        if (/harajuku|omotesando|原宿|表參道/i.test(allText)) matchedRegion = regions.find(r => r.includes('原宿') || r.includes('表參道')) || '';
+      }
+
+      if (matchedRegion) {
+        const regSelect = document.getElementById('region-select');
+        for (let opt of regSelect.options) {
+          if (opt.value === matchedRegion) { opt.selected = true; break; }
+        }
+      }
+    }
+
+    // ⭐ Tesseract.js 收據 OCR 自動辨識 ⭐
     window.scanReceiptOCR = async () => {
       const fileInput = document.getElementById('receipt-image-file');
       const statusEl = document.getElementById('ocr-status');
@@ -699,14 +884,12 @@
 
         statusEl.innerText = "✅ 辨識完成！已自動填入";
 
-        // 1. 自動偵測金額 (尋找合計、小計、Total、¥ 或帶逗號的數字)
         const amountRegex = /(?:合計|小計|TOTAL|Total|JPY|¥|税込|支付|金額)[\s:¥]*([0-9,]+)/i;
         const match = text.match(amountRegex);
         if (match) {
           const parsedAmount = match[1].replace(/,/g, '');
           document.getElementById('exp-amount').value = parsedAmount;
         } else {
-          // 次選方案：抓取文字中最大的有效金額數字
           const allNums = text.match(/\b\d{2,6}\b/g);
           if (allNums) {
             const maxVal = Math.max(...allNums.map(n => parseInt(n)).filter(n => n < 500000));
@@ -714,14 +897,12 @@
           }
         }
 
-        // 2. 自動抓取店家名稱 (取收據前幾行文字)
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1);
         if (lines.length > 0) {
           document.getElementById('exp-title').value = lines[0].substring(0, 30);
           document.getElementById('exp-items').value = lines.slice(1, 4).join(', ').substring(0, 80);
         }
 
-        // 自動設為今天日期 (若未填)
         if (!document.getElementById('exp-date').value) {
           document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
         }
@@ -732,7 +913,7 @@
       }
     };
 
-    // 儲存花費
+    // 儲存花費收據
     document.getElementById('expense-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const fileInput = document.getElementById('receipt-image-file');
@@ -764,75 +945,91 @@
       }
     };
 
-    // 渲染記帳花費與分日篩選列表
-    function renderExpenses() {
-      // 1. 統計總額
+    // ⭐ 核心新功能：依日期「完整包裹分組」渲染收據列表 ⭐
+    function renderExpensesGroupedByDate() {
       const totalJPY = allExpenses.reduce((sum, item) => sum + (item.amount || 0), 0);
       document.getElementById('total-expense-jpy').innerText = `¥ ${totalJPY.toLocaleString()}`;
       document.getElementById('total-receipts-count').innerText = `${allExpenses.length} 筆`;
 
-      // 2. 獲取所有獨特日期並排序
-      const dates = [...new Set(allExpenses.map(e => e.date).filter(Boolean))].sort();
-
-      const filterBox = document.getElementById('expense-day-filters');
-      let filterHTML = `
-        <button onclick="setExpenseDateFilter('all')" class="px-3 py-1.5 rounded-full font-bold transition whitespace-nowrap ${selectedExpenseDate === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
-          全部 (${allExpenses.length})
-        </button>
-      `;
-
-      dates.forEach((d, idx) => {
-        const count = allExpenses.filter(e => e.date === d).length;
-        const active = selectedExpenseDate === d;
-        filterHTML += `
-          <button onclick="setExpenseDateFilter('${d}')" class="px-3 py-1.5 rounded-full font-bold transition whitespace-nowrap ${active ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
-            Day ${idx + 1} (${d}) · ${count}筆
-          </button>
-        `;
+      // 依日期將項目分組 (Group by date)
+      const groups = {};
+      allExpenses.forEach(exp => {
+        const d = exp.date || '未設定日期';
+        if (!groups[d]) groups[d] = [];
+        groups[d].push(exp);
       });
-      filterBox.innerHTML = filterHTML;
-      document.getElementById('current-filter-date-label').innerText = selectedExpenseDate === 'all' ? '全部日期' : selectedExpenseDate;
 
-      // 3. 篩選與渲染卡片
-      const filtered = selectedExpenseDate === 'all' ? allExpenses : allExpenses.filter(e => e.date === selectedExpenseDate);
-      const cardsGrid = document.getElementById('expenses-cards-grid');
+      // 日期由早至晚排序
+      const sortedDates = Object.keys(groups).sort((a, b) => new Date(a) - new Date(b));
+      document.getElementById('days-covered-count').innerText = `${sortedDates.length} 天`;
 
-      cardsGrid.innerHTML = filtered.map(exp => {
-        const jsonImg = exp.receiptImg ? JSON.stringify([exp.receiptImg]).replace(/"/g, '&quot;') : '';
+      const container = document.getElementById('expenses-by-date-container');
+
+      if (sortedDates.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
+            <i class="fa-solid fa-receipt text-3xl mb-2 text-slate-300 block"></i>
+            尚無任何收據記錄，請由上方表單新增或掃描收據！
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = sortedDates.map((dateStr, idx) => {
+        const dayItems = groups[dateStr];
+        const dayTotal = dayItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+
         return `
-          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between space-y-3">
-            <div>
-              <div class="flex justify-between items-start mb-2">
-                <span class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-mono font-bold">
-                  📅 ${exp.date}
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <!-- 日期大標頭 (包裹頂部) -->
+            <div class="bg-indigo-50/80 px-5 py-3 border-b border-indigo-100 flex flex-wrap justify-between items-center gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="bg-indigo-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                  Day ${idx + 1}
                 </span>
-                <span class="text-base font-black text-indigo-600 font-mono">
-                  ¥ ${(exp.amount || 0).toLocaleString()}
-                </span>
+                <span class="font-bold text-slate-800 text-sm">📅 ${dateStr}</span>
+                <span class="text-xs text-slate-400">(${dayItems.length} 筆消費)</span>
               </div>
-              <h4 class="font-bold text-slate-800 text-sm">${exp.title}</h4>
-              ${exp.items ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">🛒 ${exp.items}</p>` : ''}
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs text-slate-500 font-medium">當日小計：</span>
+                <span class="text-base font-black text-indigo-700 font-mono">¥ ${dayTotal.toLocaleString()}</span>
+              </div>
             </div>
 
-            <div class="pt-2 border-t border-slate-50 flex items-center justify-between">
-              ${exp.receiptImg ? `
-                <button type="button" onclick="openLightbox(${jsonImg}, 0)" class="text-xs text-indigo-600 hover:underline flex items-center gap-1 font-medium">
-                  <i class="fa-solid fa-receipt"></i> 查看收據相片
-                </button>
-              ` : '<span class="text-[11px] text-slate-400">無相片</span>'}
-              <button onclick="deleteExpense('${exp.id}')" class="text-slate-300 hover:text-red-500 text-xs">
-                <i class="fa-solid fa-trash-can"></i>
-              </button>
+            <!-- 當日所有收據子項目清單 -->
+            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              ${dayItems.map(exp => {
+                const jsonImg = exp.receiptImg ? JSON.stringify([exp.receiptImg]).replace(/"/g, '&quot;') : '';
+                return `
+                  <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex flex-col justify-between hover:bg-slate-100/70 transition space-y-2">
+                    <div class="flex justify-between items-start gap-2">
+                      <div class="space-y-0.5">
+                        <h5 class="font-bold text-slate-800 text-xs">${exp.title}</h5>
+                        ${exp.items ? `<p class="text-[11px] text-slate-500 line-clamp-2">🛒 ${exp.items}</p>` : ''}
+                      </div>
+                      <span class="font-black text-indigo-600 text-sm font-mono shrink-0">
+                        ¥ ${(exp.amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                      ${exp.receiptImg ? `
+                        <button type="button" onclick="openLightbox(${jsonImg}, 0)" class="text-indigo-600 hover:underline flex items-center gap-1 font-semibold text-[11px]">
+                          <i class="fa-solid fa-receipt"></i> 查看收據相片
+                        </button>
+                      ` : '<span class="text-[11px] text-slate-400">無相片</span>'}
+                      <button onclick="deleteExpense('${exp.id}')" class="text-slate-300 hover:text-red-500 p-1" title="刪除此筆">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
             </div>
           </div>
         `;
       }).join('');
     }
-
-    window.setExpenseDateFilter = (date) => {
-      selectedExpenseDate = date;
-      renderExpenses();
-    };
 
     ['lat', 'lng'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => {
@@ -1200,172 +1397,6 @@
           <button onclick="deleteCategory('${c.name}')" class="text-red-400"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       `).join('');
-    }
-
-    let searchCandidates = [];
-
-    document.getElementById('parse-btn').addEventListener('click', async () => {
-      const inputStr = document.getElementById('map-url').value.trim();
-      const statusEl = document.getElementById('detect-status');
-      const boxEl = document.getElementById('search-candidates-box');
-      const listEl = document.getElementById('search-candidates-list');
-
-      if (!inputStr) return alert('請先輸入店名、Google Maps 網址 或 Plus Code！');
-
-      statusEl.innerText = '正在尋找店家...';
-      boxEl.classList.add('hidden');
-      listEl.innerHTML = '';
-
-      const plusCodeRegex = /([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})/i;
-      const plusMatch = inputStr.match(plusCodeRegex);
-      if (plusMatch && typeof OpenLocationCode !== 'undefined') {
-        const rawCode = plusMatch[1].toUpperCase();
-        try {
-          if (OpenLocationCode.isValid(rawCode)) {
-            let fullCode = OpenLocationCode.isShort(rawCode) ? OpenLocationCode.recoverNearest(rawCode, 35.6812, 139.7671) : rawCode;
-            const coord = OpenLocationCode.decode(fullCode);
-            updateModalAdjustMarker(coord.latitudeCenter, coord.longitudeCenter, 17);
-            const cleanTitle = inputStr.replace(plusCodeRegex, '').trim();
-            if (cleanTitle) document.getElementById('title').value = cleanTitle.split(',')[0].trim();
-            statusEl.innerText = '🎯 Plus Code 零誤差定位成功！';
-            autoDetectCategoryAndRegion(inputStr);
-            return;
-          }
-        } catch (e) {}
-      }
-
-      const isUrl = inputStr.startsWith('http://') || inputStr.startsWith('https://');
-      let searchQuery = inputStr;
-
-      if (isUrl) {
-        document.getElementById('nav-link').value = inputStr;
-        const decodedUrl = decodeURIComponent(inputStr);
-
-        let detectedTitle = '';
-        if (decodedUrl.includes('/place/')) {
-          const match = decodedUrl.match(/\/place\/([^\/]+)/);
-          if (match) detectedTitle = match[1].split('/')[0].replace(/\+/g, ' ');
-        } else if (decodedUrl.includes('q=')) {
-          const match = decodedUrl.match(/q=([^&]+)/);
-          if (match) detectedTitle = match[1].replace(/\+/g, ' ');
-        } else if (decodedUrl.includes('query=')) {
-          const match = decodedUrl.match(/query=([^&]+)/);
-          if (match) detectedTitle = match[1].replace(/\+/g, ' ');
-        }
-
-        detectedTitle = detectedTitle.replace(/@.*$/, '').replace(/[\d\.]+,[\d\.]+/g, '').replace(/Google Maps/gi, '').trim();
-        if (detectedTitle) searchQuery = detectedTitle;
-
-        const preciseCoordMatch = inputStr.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-        const coordMatch = preciseCoordMatch || inputStr.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || inputStr.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (coordMatch) {
-          updateModalAdjustMarker(coordMatch[1], coordMatch[2], 17);
-          if (detectedTitle) document.getElementById('title').value = detectedTitle;
-          statusEl.innerText = '✅ 網址解析成功！';
-          autoDetectCategoryAndRegion(detectedTitle || inputStr);
-          return;
-        }
-      }
-
-      try {
-        const queryWithTokyo = searchQuery.includes('Tokyo') || searchQuery.includes('東京') ? searchQuery : `${searchQuery} Tokyo Japan`;
-        const apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryWithTokyo)}&limit=6&addressdetails=1`;
-        const res = await fetch(apiUrl, { headers: { 'Accept-Language': 'zh-TW,ja,en' } });
-        searchCandidates = await res.json();
-
-        if (searchCandidates && searchCandidates.length > 0) {
-          statusEl.innerText = `找到 ${searchCandidates.length} 間相關店家，請點選：`;
-          boxEl.classList.remove('hidden');
-
-          listEl.innerHTML = searchCandidates.map((item, idx) => {
-            const shortName = item.name || item.display_name.split(',')[0];
-            const address = item.display_name;
-            return `
-              <div onclick="selectCandidate(${idx})" class="p-2 hover:bg-indigo-50 rounded-lg cursor-pointer transition border border-slate-100 flex flex-col gap-0.5">
-                <div class="font-bold text-slate-800 text-xs flex items-center justify-between">
-                  <span>📍 ${shortName}</span>
-                  <span class="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">選擇此店家</span>
-                </div>
-                <div class="text-[11px] text-slate-500 truncate">${address}</div>
-              </div>
-            `;
-          }).join('');
-
-          selectCandidate(0, false);
-        } else {
-          statusEl.innerText = '❌ 找不到該店名，請嘗試輸入更具體關鍵字';
-        }
-      } catch (err) {
-        statusEl.innerText = '⚠️ 搜尋失敗，請手動拖曳地圖定位';
-      }
-    });
-
-    window.selectCandidate = (idx, hideBox = true) => {
-      const item = searchCandidates[idx];
-      if (!item) return;
-
-      const shortName = item.name || item.display_name.split(',')[0];
-      document.getElementById('title').value = shortName;
-      document.getElementById('notes').value = item.display_name;
-
-      updateModalAdjustMarker(item.lat, item.lon, 17);
-      document.getElementById('detect-status').innerText = `✅ 已選取：${shortName}`;
-
-      if (!document.getElementById('nav-link').value) {
-        document.getElementById('nav-link').value = `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`;
-      }
-
-      autoDetectCategoryAndRegion(item.display_name + ' ' + shortName);
-
-      if (hideBox) {
-        document.getElementById('search-candidates-box').classList.add('hidden');
-      }
-    };
-
-    function autoDetectCategoryAndRegion(text) {
-      const allText = text.toLowerCase();
-
-      let matchedCategory = '';
-      if (/ramen|拉麵|沾麵|sushi|壽司|烤肉|yakiniku|cafe|咖啡|甜點|居酒屋|美食|food|restaurant|燒肉|鰻魚|天婦羅|和牛/i.test(allText)) {
-        if (/cafe|咖啡|coffee/i.test(allText)) matchedCategory = "咖啡";
-        else matchedCategory = "美食";
-      } else if (/park|park|shrine|神社|寺|景點|museum|博物館|sky|tower|水族館|迪士尼|disney/i.test(allText)) {
-        matchedCategory = "景點";
-      } else if (/store|shop|bic|yodobashi|唐吉訶德|donki|購物|商場|mall|outlet|無印|loft|animate/i.test(allText)) {
-        matchedCategory = "購物";
-      }
-
-      if (matchedCategory) {
-        const catSelect = document.getElementById('category-select');
-        for (let opt of catSelect.options) {
-          if (opt.value === matchedCategory) { opt.selected = true; break; }
-        }
-      }
-
-      let matchedRegion = '';
-      regions.forEach(r => {
-        const keywords = r.split('/');
-        keywords.forEach(kw => {
-          if (kw && allText.includes(kw.toLowerCase())) matchedRegion = r;
-        });
-      });
-
-      if (!matchedRegion) {
-        if (/kanda|sakumacho|神田|akihabara|chiyoda|千代田/i.test(allText)) matchedRegion = regions.find(r => r.includes('秋葉原') || r.includes('東京')) || '';
-        if (/shinjuku|新宿/i.test(allText)) matchedRegion = regions.find(r => r.includes('新宿')) || '';
-        if (/shibuya|澀谷|涉谷/i.test(allText)) matchedRegion = regions.find(r => r.includes('澀谷')) || '';
-        if (/asakusa|ueno|taito|淺草|上野|台東/i.test(allText)) matchedRegion = regions.find(r => r.includes('淺草') || r.includes('上野')) || '';
-        if (/ginza|chuo|銀座|中央區/i.test(allText)) matchedRegion = regions.find(r => r.includes('銀座') || r.includes('東京')) || '';
-        if (/ikebukuro|池袋/i.test(allText)) matchedRegion = regions.find(r => r.includes('池袋')) || '';
-        if (/harajuku|omotesando|原宿|表參道/i.test(allText)) matchedRegion = regions.find(r => r.includes('原宿') || r.includes('表參道')) || '';
-      }
-
-      if (matchedRegion) {
-        const regSelect = document.getElementById('region-select');
-        for (let opt of regSelect.options) {
-          if (opt.value === matchedRegion) { opt.selected = true; break; }
-        }
-      }
     }
 
     async function getBase64Image(file) {
@@ -1799,11 +1830,10 @@
       initTodoSortable();
     });
 
-    // 監聽記帳與收據 Firebase 集合
+    // 監聽收據集合並依日期包裹
     onSnapshot(collection(db, "expenses"), (snapshot) => {
       allExpenses = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      allExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
-      renderExpenses();
+      renderExpensesGroupedByDate();
     });
   </script>
 </body>
