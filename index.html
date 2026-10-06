@@ -13,6 +13,9 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- Google 官方 Open Location Code (Plus Code) 解碼套件 -->
+  <script src="https://cdn.jsdelivr.net/npm/open-location-code@1.0.4/openlocationcode.min.js"></script>
+
   <!-- SortableJS 拖拉排序套件 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 
@@ -44,7 +47,7 @@
       <button onclick="openFHModal('hotel')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
         <i class="fa-solid fa-hotel"></i> + 新增酒店
       </button>
-      <button onclick="openAddModal()" class="bg-[#facc15] hover:bg-yellow-400 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-sm transition">
+      <button onclick="openAddModal()" class="bg-[#facc15] hover:bg-yellow-400 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1 shadow-sm transition">
         <i class="fa-solid fa-circle-plus"></i> 新增景點/食店
       </button>
     </div>
@@ -191,14 +194,14 @@
       <form id="place-form" class="p-5 space-y-4 text-sm">
         <input type="hidden" id="edit-id">
 
-        <!-- 智慧解析框：支援 Google Maps 網址、或是直接貼上日本地址/店名 -->
+        <!-- 智慧解析框：支援 Plus Code、Google Maps 網址或日本地址 -->
         <div class="bg-indigo-50/60 p-3 rounded-xl border border-indigo-100 space-y-1.5">
           <div class="flex justify-between items-center">
-            <label class="block font-medium text-slate-700 text-xs">貼上 Google Maps 網址 或 日本地址 / 店名</label>
+            <label class="block font-medium text-slate-700 text-xs">貼上 Google Plus Code (例如: MQXC+8M 千代田區) 或 Maps 網址</label>
             <span id="detect-status" class="text-[10px] text-indigo-600 font-medium"></span>
           </div>
           <div class="flex gap-2">
-            <input type="text" id="map-url" placeholder="貼上網址 或 1 Chome-6-4 Kanda Sakumacho..." class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="map-url" placeholder="例如: MQXC+8M 千代田區 或 貼上網址/地址" class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
             <button type="button" id="parse-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700 flex items-center gap-1 shrink-0">
               <i class="fa-solid fa-wand-magic-sparkles"></i> 自動解析
             </button>
@@ -304,7 +307,7 @@
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航 (包含座標或地址可展示精簡縮圖)</label>
+          <label class="block font-medium text-slate-700 mb-1">地址 / Google Maps 導航</label>
           <input type="text" id="fh-nav" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none">
         </div>
 
@@ -828,25 +831,57 @@
       `).join('');
     }
 
-    // ⭐ 全新強大解析引擎：同時支援 Google Maps 網址 與 日本地址/店名查詢 ⭐
+    // ⭐ 全新強大 Plus Code 與多格式解析引擎 ⭐
     document.getElementById('parse-btn').addEventListener('click', async () => {
       const inputStr = document.getElementById('map-url').value.trim();
       const statusEl = document.getElementById('detect-status');
-      if (!inputStr) return alert('請先輸入 Google Maps 網址 或 日本地址/店名！');
+      if (!inputStr) return alert('請先輸入 Google Plus Code、Maps 網址 或 日本地址！');
 
       statusEl.innerText = '正在智慧解析中...';
-      const isUrl = inputStr.startsWith('http://') || inputStr.startsWith('https://');
 
       let detectedTitle = '';
       let detectedLat = null;
       let detectedLng = null;
-      let detectedAddress = '';
+      let isPlusCodeSuccess = false;
 
+      // 1. 優先檢測 Plus Code (例如: MQXC+8M 或 8Q7XMQXC+8M)
+      const plusCodeRegex = /([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})/i;
+      const plusMatch = inputStr.match(plusCodeRegex);
+
+      if (plusMatch && typeof OpenLocationCode !== 'undefined') {
+        const rawCode = plusMatch[1].toUpperCase();
+        try {
+          if (OpenLocationCode.isValid(rawCode)) {
+            let fullCode = rawCode;
+            // 若為短碼 (例如 MQXC+8M)，以東京市中心座標 (35.6812, 139.7671) 還原全碼
+            if (OpenLocationCode.isShort(rawCode)) {
+              fullCode = OpenLocationCode.recoverNearest(rawCode, 35.6812, 139.7671);
+            }
+            const coord = OpenLocationCode.decode(fullCode);
+            detectedLat = coord.latitudeCenter;
+            detectedLng = coord.longitudeCenter;
+            isPlusCodeSuccess = true;
+
+            // 取出 Plus Code 後面的地名文字作為輔助備註
+            const cleanTitle = inputStr.replace(plusCodeRegex, '').trim();
+            if (cleanTitle) {
+              document.getElementById('notes').value = cleanTitle;
+              detectedTitle = cleanTitle.split(',')[0].trim();
+            }
+          }
+        } catch (e) {
+          console.warn('Plus Code 解碼異常:', e);
+        }
+      }
+
+      const isUrl = inputStr.startsWith('http://') || inputStr.startsWith('https://');
+
+      // 2. 如果是網址且尚未由 Plus Code 定位
       if (isUrl) {
         document.getElementById('nav-link').value = inputStr;
         const decodedUrl = decodeURIComponent(inputStr);
 
-        // 1. 從網址抓店名
+        // 提取店名
         if (decodedUrl.includes('/place/')) {
           const placeMatch = decodedUrl.match(/\/place\/([^\/]+)/);
           if (placeMatch) detectedTitle = placeMatch[1].split('/')[0].replace(/\+/g, ' ');
@@ -858,29 +893,30 @@
           if (queryMatch) detectedTitle = queryMatch[1].replace(/\+/g, ' ');
         }
 
-        // 2. 從網址抓座標
-        const preciseCoordMatch = inputStr.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-        if (preciseCoordMatch) {
-          detectedLat = preciseCoordMatch[1];
-          detectedLng = preciseCoordMatch[2];
-        } else {
-          const coordMatch = inputStr.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || inputStr.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-          if (coordMatch) {
-            detectedLat = coordMatch[1];
-            detectedLng = coordMatch[2];
+        // 提取網址座標
+        if (!detectedLat || !detectedLng) {
+          const preciseCoordMatch = inputStr.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+          if (preciseCoordMatch) {
+            detectedLat = preciseCoordMatch[1];
+            detectedLng = preciseCoordMatch[2];
+          } else {
+            const coordMatch = inputStr.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || inputStr.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+            if (coordMatch) {
+              detectedLat = coordMatch[1];
+              detectedLng = coordMatch[2];
+            }
           }
         }
-      } else {
-        // 如果輸入的是純文字 (日本地址或店名)
+      } else if (!isPlusCodeSuccess) {
+        // 純地址或文字輸入
         detectedTitle = inputStr.split(',')[0].trim();
-        detectedAddress = inputStr;
         document.getElementById('notes').value = inputStr;
       }
 
-      // 3. 如果尚未取得座標，呼叫 OpenStreetMap Nominatim 地理編碼 API 自動搜尋日本地址/店名座標
+      // 3. 備用：若仍未取得座標，調用 Nominatim API
       if (!detectedLat || !detectedLng) {
         try {
-          const query = detectedAddress || detectedTitle || inputStr;
+          const query = detectedTitle || inputStr;
           const apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
           const res = await fetch(apiUrl, { headers: { 'Accept-Language': 'ja,zh-TW,en' } });
           const data = await res.json();
@@ -896,15 +932,15 @@
         }
       }
 
-      // 清理店名多餘字元
+      // 清理店名雜訊
       detectedTitle = detectedTitle.replace(/@.*$/, '').replace(/[\d\.]+,[\d\.]+/g, '').replace(/Google Maps/gi, '').trim();
       if (detectedTitle) document.getElementById('title').value = detectedTitle;
 
       if (detectedLat && detectedLng) {
         updateModalAdjustMarker(detectedLat, detectedLng);
-        statusEl.innerText = '✅ 解析成功！已定位座標';
+        statusEl.innerText = isPlusCodeSuccess ? '🎯 Plus Code 零誤差定位成功！' : '✅ 定位成功！';
       } else {
-        statusEl.innerText = '⚠️ 已抓取店名，座標請手動拖曳';
+        statusEl.innerText = '⚠️️ 請在地圖上拖動紅色 Pin 點完成定位';
       }
 
       // 4. 智慧分類辨識
@@ -935,13 +971,12 @@
         });
       });
 
-      // 針對常見地區補充辨識
       if (!matchedRegion) {
-        if (/kanda|sakumacho|神田|akihabara|chiyoda/i.test(allText)) matchedRegion = regions.find(r => r.includes('秋葉原') || r.includes('東京')) || '';
-        if (/shinjuku/i.test(allText)) matchedRegion = regions.find(r => r.includes('新宿')) || '';
-        if (/shibuya/i.test(allText)) matchedRegion = regions.find(r => r.includes('澀谷')) || '';
-        if (/asakusa|ueno|taito/i.test(allText)) matchedRegion = regions.find(r => r.includes('淺草') || r.includes('上野')) || '';
-        if (/ginza|chuo/i.test(allText)) matchedRegion = regions.find(r => r.includes('銀座') || r.includes('東京')) || '';
+        if (/kanda|sakumacho|神田|akihabara|chiyoda|千代田/i.test(allText)) matchedRegion = regions.find(r => r.includes('秋葉原') || r.includes('東京')) || '';
+        if (/shinjuku|新宿/i.test(allText)) matchedRegion = regions.find(r => r.includes('新宿')) || '';
+        if (/shibuya|澀谷|涉谷/i.test(allText)) matchedRegion = regions.find(r => r.includes('澀谷')) || '';
+        if (/asakusa|ueno|taito|淺草|上野|台東/i.test(allText)) matchedRegion = regions.find(r => r.includes('淺草') || r.includes('上野')) || '';
+        if (/ginza|chuo|銀座|中央區/i.test(allText)) matchedRegion = regions.find(r => r.includes('銀座') || r.includes('東京')) || '';
       }
 
       if (matchedRegion) {
