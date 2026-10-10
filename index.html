@@ -1494,7 +1494,7 @@
       const fileInput = document.getElementById('image-file');
       const extraFileInput = document.getElementById('extra-images-file');
       
-      let finalImg = document.getElementById('image-url').value;
+      let finalImg = document.getElementById('image-url').value || '';
       if (fileInput.files.length > 0) {
         finalImg = await getBase64Image(fileInput.files[0]);
       }
@@ -1507,20 +1507,23 @@
         }
       }
 
-      const latInput = document.getElementById('lat').value.trim();
-      const lngInput = document.getElementById('lng').value.trim();
+      // 嚴格過濾經緯度，若是空白或 NaN，一律轉為 null，防止 Firestore 崩潰
+      const rawLat = parseFloat(document.getElementById('lat').value);
+      const rawLng = parseFloat(document.getElementById('lng').value);
+      const validLat = Number.isFinite(rawLat) ? rawLat : null;
+      const validLng = Number.isFinite(rawLng) ? rawLng : null;
 
       const placeData = {
-        title: document.getElementById('title').value.trim(),
-        region: document.getElementById('region-select').value,
-        category: document.getElementById('category-select').value,
-        imageUrl: finalImg || '',
+        title: (document.getElementById('title').value || '').trim(),
+        region: document.getElementById('region-select').value || (regions[0] || '東京'),
+        category: document.getElementById('category-select').value || (categories[0]?.name || '美食'),
+        imageUrl: finalImg,
         extraImages: newExtraImages,
-        recommendation: document.getElementById('recommendation').value.trim(),
-        notes: document.getElementById('notes').value.trim(),
-        navLink: document.getElementById('nav-link').value.trim(),
-        lat: latInput ? parseFloat(latInput) : null,
-        lng: lngInput ? parseFloat(lngInput) : null,
+        recommendation: (document.getElementById('recommendation').value || '').trim(),
+        notes: (document.getElementById('notes').value || '').trim(),
+        navLink: (document.getElementById('nav-link').value || '').trim(),
+        lat: validLat,
+        lng: validLng,
       };
 
       try {
@@ -1532,9 +1535,10 @@
           await addDoc(collection(db, "places"), placeData);
         }
         closePlaceModal();
+        alert("景點儲存成功！");
       } catch (err) {
-        console.error("儲存失敗：", err);
-        alert("儲存景點失敗，請檢查網絡或 Firebase 連線！");
+        console.error("Firebase 儲存詳細錯誤：", err);
+        alert("儲存失敗！原因：" + (err.message || err));
       }
     });
 
