@@ -360,7 +360,7 @@
         <button onclick="closePlaceModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
-      <form id="place-form" class="p-5 space-y-4 text-sm">
+      <form id="place-form" class="p-5 space-y-4 text-sm text-slate-800">
         <input type="hidden" id="edit-id">
 
         <!-- ⭐ Google Maps 原生根基搜尋器 ⭐ -->
@@ -373,7 +373,7 @@
           </div>
 
           <div class="flex gap-1.5">
-            <input type="text" id="map-url" placeholder="貼上 Plus Code (如 MQXC+8M)、Maps 網址 或店名" class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="map-url" placeholder="貼上 Plus Code (如 MQXC+8M)、Maps 網址 或店名" class="flex-1 p-2 bg-white text-slate-800 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
             <button type="button" id="parse-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 flex items-center gap-1 shrink-0">
               <i class="fa-solid fa-bolt"></i> 自動解析
             </button>
@@ -388,7 +388,7 @@
           </div>
 
           <!-- 搜尋候選列表 -->
-          <div id="search-candidates-box" class="hidden bg-white rounded-xl border border-indigo-200 p-2 shadow-sm space-y-1 max-h-44 overflow-y-auto text-xs">
+          <div id="search-candidates-box" class="hidden bg-white rounded-xl border border-indigo-200 p-2 shadow-sm space-y-1 max-h-44 overflow-y-auto text-xs text-slate-800">
             <div class="text-[11px] text-slate-400 px-1 pb-1 border-b">點擊符合項目自動填寫：</div>
             <div id="search-candidates-list" class="space-y-1"></div>
           </div>
@@ -396,24 +396,24 @@
 
         <div>
           <label class="block font-medium text-slate-700 mb-1">景點 / 店名 *</label>
-          <input type="text" id="title" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+          <input type="text" id="title" required class="w-full p-2.5 bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-medium text-slate-700 mb-1">主要車站/區域 *</label>
-            <select id="region-select" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></select>
+            <select id="region-select" class="w-full p-2.5 bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></select>
           </div>
           <div>
             <label class="block font-medium text-slate-700 mb-1">類別 *</label>
-            <select id="category-select" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white"></select>
+            <select id="category-select" class="w-full p-2.5 bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></select>
           </div>
         </div>
 
         <!-- 圖片上傳區塊 -->
-        <div class="space-y-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div class="space-y-3 bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-800">
           <label class="block font-medium text-slate-700 text-xs">主封面圖片 (網址或檔案)</label>
-          <input type="url" id="image-url" placeholder="貼上封面圖片網址 https://..." class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none">
+          <input type="url" id="image-url" placeholder="貼上封面圖片網址 https://..." class="w-full p-2 bg-white text-slate-800 border border-slate-200 rounded-lg text-xs outline-none">
           <input type="file" id="image-file" accept="image/*" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
 
           <hr class="border-slate-200 my-2">
@@ -425,21 +425,21 @@
 
         <div>
           <label class="block font-medium text-slate-700 mb-1">推介 / 必食內容</label>
-          <input type="text" id="recommendation" placeholder="例如：魚介雞白湯沾麵" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+          <input type="text" id="recommendation" placeholder="例如：魚介雞白湯沾麵" class="w-full p-2.5 bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
 
         <div>
           <label class="block font-medium text-slate-700 mb-1">備註 / 簡介 / 日本地址</label>
-          <textarea id="notes" rows="2" placeholder="例如：人氣排隊名店，只收現金..." class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+          <textarea id="notes" rows="2" placeholder="例如：人氣排隊名店，只收現金..." class="w-full p-2.5 bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
         </div>
 
         <div>
           <label class="block font-medium text-slate-700 mb-1">Google Maps 導航連結</label>
-          <input type="url" id="nav-link" placeholder="導航連結" class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+          <input type="url" id="nav-link" placeholder="導航連結" class="w-full p-2.5 bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
 
         <!-- 座標微調 + 自動讀取已有車站快捷鈕 -->
-        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5 text-slate-800">
           <div class="flex justify-between items-center">
             <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
               <i class="fa-solid fa-crosshairs text-indigo-600"></i> 地圖座標微調 (可拖動紅色 Pin 點)
@@ -449,7 +449,7 @@
 
           <div class="bg-white p-2 rounded-xl border border-slate-200 space-y-1.5">
             <div class="flex gap-1.5">
-              <input type="text" id="jump-station-input" placeholder="輸入自訂車站/地標手動尋找" class="flex-1 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+              <input type="text" id="jump-station-input" placeholder="輸入自訂車站/地標手動尋找" class="flex-1 p-1.5 bg-slate-50 text-slate-800 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
               <button type="button" onclick="jumpToLocation()" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-900 shrink-0">
                 跳轉範圍
               </button>
@@ -461,8 +461,8 @@
           </div>
 
           <div class="grid grid-cols-2 gap-2 text-xs">
-            <input type="text" id="lat" placeholder="緯度 Lat" class="p-2 bg-white border border-slate-200 rounded-lg">
-            <input type="text" id="lng" placeholder="經度 Lng" class="p-2 bg-white border border-slate-200 rounded-lg">
+            <input type="text" id="lat" placeholder="緯度 Lat" class="p-2 bg-white text-slate-800 border border-slate-200 rounded-lg">
+            <input type="text" id="lng" placeholder="經度 Lng" class="p-2 bg-white text-slate-800 border border-slate-200 rounded-lg">
           </div>
 
           <div id="modal-adjust-map" class="border border-slate-200"></div>
