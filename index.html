@@ -40,7 +40,7 @@
     .hotel-mini-map { height: 160px; width: 100%; border-radius: 0.75rem; z-index: 1; }
   </style>
 </head>
-<body class="bg-[#f3f4f6] text-slate-800 font-sans min-h-screen">
+<body class="bg-[#f3f4f6] dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen transition-colors duration-200">
 
   <!-- 頂部 Header 與分頁切換 -->
   <header class="bg-[#4f46e5] text-white px-6 py-3 shadow-md flex flex-wrap justify-between items-center sticky top-0 z-40 gap-3">
@@ -64,7 +64,12 @@
     </div>
 
     <div class="flex items-center gap-2">
-      <button onclick="openFHModal('flight')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
+      <!-- 🌙 / ☀️ 深色/淺色模式切換按鈕 -->
+      <button id="theme-toggle-btn" onclick="toggleDarkMode()" class="bg-indigo-700/80 hover:bg-indigo-700 text-yellow-300 w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-sm transition mr-1" title="切換深色/淺色模式">
+        <i id="theme-icon" class="fa-solid fa-moon"></i>
+      </button>
+
+      <button onclick="openFHModal('flight')"
         <i class="fa-solid fa-plane"></i> + 新增航班
       </button>
       <button onclick="openFHModal('hotel')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
