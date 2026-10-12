@@ -1232,11 +1232,16 @@
       existingExtraImages = [];
       document.getElementById('extra-images-preview').innerHTML = '';
       populateSelects();
-      document.getElementById('placeModal').classList.remove('hidden');
+
+      const modalEl = document.getElementById('placeModal');
+      modalEl.classList.remove('hidden');
+
+      // 確保視窗內容內部與整體捲軸都捲到最頂部
+      const scrollContainer = modalEl.querySelector('.overflow-y-auto') || modalEl;
+      scrollContainer.scrollTop = 0;
 
       initModalAdjustMap(35.6812, 139.7671);
     };
-
     window.openEditModal = (id) => {
       const item = allPlaces.find(p => p.id === id);
       if (!item) return;
@@ -1491,6 +1496,32 @@
         document.getElementById('place-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const editId = document.getElementById('edit-id').value;
+      const titleVal = (document.getElementById('title').value || '').trim();
+
+      // 嚴格過濾經緯度，若是空白或 NaN，一律轉為 null
+      const rawLat = parseFloat(document.getElementById('lat').value);
+      const rawLng = parseFloat(document.getElementById('lng').value);
+      const validLat = Number.isFinite(rawLat) ? rawLat : null;
+      const validLng = Number.isFinite(rawLng) ? rawLng : null;
+
+      // ⭐ 重複檢查：若名稱完全一樣 或 座標完全一樣，阻擋加入並彈出提示 ⭐
+      const duplicateItem = allPlaces.find(p => {
+        if (editId && p.id === editId) return false; // 編輯自己時跳過比對
+
+        const isSameTitle = p.title && p.title.trim().toLowerCase() === titleVal.toLowerCase();
+        const isSameCoord = validLat !== null && validLng !== null && p.lat === validLat && p.lng === validLng;
+
+        return isSameTitle || isSameCoord;
+      });
+
+      if (duplicateItem) {
+        const reason = (duplicateItem.title && duplicateItem.title.trim().toLowerCase() === titleVal.toLowerCase()) 
+          ? `景點名稱「${duplicateItem.title}」已存在！` 
+          : `此經緯度座標已存在於景點「${duplicateItem.title}」！`;
+        alert(`⚠️ 無法加入：發現重複資料！\n${reason}`);
+        return; // 中斷執行，不會存入資料庫
+      }
+
       const fileInput = document.getElementById('image-file');
       const extraFileInput = document.getElementById('extra-images-file');
       
@@ -1507,14 +1538,8 @@
         }
       }
 
-      // 嚴格過濾經緯度，若是空白或 NaN，一律轉為 null，防止 Firestore 崩潰
-      const rawLat = parseFloat(document.getElementById('lat').value);
-      const rawLng = parseFloat(document.getElementById('lng').value);
-      const validLat = Number.isFinite(rawLat) ? rawLat : null;
-      const validLng = Number.isFinite(rawLng) ? rawLng : null;
-
       const placeData = {
-        title: (document.getElementById('title').value || '').trim(),
+        title: titleVal,
         region: document.getElementById('region-select').value || (regions[0] || '東京'),
         category: document.getElementById('category-select').value || (categories[0]?.name || '美食'),
         imageUrl: finalImg,
@@ -1535,7 +1560,7 @@
           await addDoc(collection(db, "places"), placeData);
         }
         closePlaceModal();
-        alert("景點儲存成功！");
+        // 成功後直接關閉視窗，不彈出提示
       } catch (err) {
         console.error("Firebase 儲存詳細錯誤：", err);
         alert("儲存失敗！原因：" + (err.message || err));
