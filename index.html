@@ -588,11 +588,22 @@
     const db = getFirestore(app);
 
     const defaultRegions = ["東京", "新宿", "澀谷", "淺草/上野", "原宿/表參道", "秋葉原", "池袋", "六本木", "築地/台場"];
+    const categoryPalette = [
+      { color: "bg-amber-100 text-amber-800 border-amber-300", activeBg: "bg-amber-600 text-white", icon: "fa-utensils" },
+      { color: "bg-emerald-100 text-emerald-800 border-emerald-300", activeBg: "bg-emerald-600 text-white", icon: "fa-torii-gate" },
+      { color: "bg-stone-100 text-stone-800 border-stone-300", activeBg: "bg-stone-600 text-white", icon: "fa-mug-hot" },
+      { color: "bg-pink-100 text-pink-800 border-pink-300", activeBg: "bg-pink-600 text-white", icon: "fa-bag-shopping" },
+      { color: "bg-purple-100 text-purple-800 border-purple-300", activeBg: "bg-purple-600 text-white", icon: "fa-gamepad" },
+      { color: "bg-sky-100 text-sky-800 border-sky-300", activeBg: "bg-sky-600 text-white", icon: "fa-camera" },
+      { color: "bg-rose-100 text-rose-800 border-rose-300", activeBg: "bg-rose-600 text-white", icon: "fa-heart" },
+      { color: "bg-teal-100 text-teal-800 border-teal-300", activeBg: "bg-teal-600 text-white", icon: "fa-cart-shopping" }
+    ];
+
     const defaultCategories = [
-      { name: "美食", icon: "fa-utensils", color: "bg-amber-100 text-amber-800" },
-      { name: "景點", icon: "fa-torii-gate", color: "bg-emerald-100 text-emerald-800" },
-      { name: "咖啡", icon: "fa-mug-hot", color: "bg-stone-100 text-stone-800" },
-      { name: "購物", icon: "fa-bag-shopping", color: "bg-pink-100 text-pink-800" }
+      { name: "美食", icon: "fa-utensils", color: "bg-amber-100 text-amber-800 border-amber-200", activeBg: "bg-amber-600 text-white" },
+      { name: "景點", icon: "fa-torii-gate", color: "bg-emerald-100 text-emerald-800 border-emerald-200", activeBg: "bg-emerald-600 text-white" },
+      { name: "咖啡", icon: "fa-mug-hot", color: "bg-stone-100 text-stone-800 border-stone-200", activeBg: "bg-stone-600 text-white" },
+      { name: "購物", icon: "fa-bag-shopping", color: "bg-pink-100 text-pink-800 border-pink-200", activeBg: "bg-pink-600 text-white" }
     ];
 
     let regions = defaultRegions;
@@ -1661,17 +1672,28 @@
       });
       document.getElementById('region-list').innerHTML = regHTML;
 
-      // 2. 類別頁籤
-      let catHTML = `<button onclick="setCategory('all')" class="px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${currentCategory === 'all' ? 'bg-[#4f46e5] text-white' : 'bg-white text-slate-600 border border-slate-200'}">全部</button>`;
-      categories.forEach(c => {
+      // 2. 類別頁籤 (每個分類獨立彩色展示)
+      let catHTML = `
+        <button onclick="setCategory('all')" class="px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap shadow-sm border ${currentCategory === 'all' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}">
+          全部
+        </button>
+      `;
+
+      categories.forEach((c, idx) => {
         const active = currentCategory === c.name;
+        // 若缺少樣式則從調色盤自動對應補足
+        const palette = categoryPalette[idx % categoryPalette.length];
+        const badgeColor = c.color || palette.color;
+        const activeColor = c.activeBg || palette.activeBg;
+
         catHTML += `
-          <button onclick="setCategory('${c.name}')" class="px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap flex items-center gap-1 ${active ? 'bg-[#4f46e5] text-white' : 'bg-white text-slate-600 border border-slate-200'}">
-            <span>${c.name}</span><i class="fa-solid ${c.icon} text-[10px]"></i>
+          <button onclick="setCategory('${c.name}')" class="px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 border shadow-sm ${active ? `${activeColor} border-transparent shadow` : `${badgeColor} hover:opacity-80`}">
+            <span>${c.name}</span>
+            <i class="fa-solid ${c.icon || 'fa-tag'} text-[11px]"></i>
           </button>
         `;
       });
-      catHTML += `<button onclick="openManageCategoriesModal()" class="text-xs text-indigo-600 px-2" title="管理類別"><i class="fa-solid fa-gear"></i></button>`;
+      catHTML += `<button onclick="openManageCategoriesModal()" class="text-xs text-indigo-600 hover:text-indigo-800 px-2 py-1" title="管理類別"><i class="fa-solid fa-gear"></i></button>`;
       document.getElementById('category-tabs').innerHTML = catHTML;
 
       // 3. 航班與酒店卡片
