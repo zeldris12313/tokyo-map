@@ -43,41 +43,47 @@
 <body class="bg-[#f3f4f6] dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen transition-colors duration-200">
 
   <!-- 頂部 Header 與分頁切換 -->
-  <header class="bg-[#4f46e5] text-white px-6 py-3 shadow-md flex flex-wrap justify-between items-center sticky top-0 z-40 gap-3">
-    <div class="flex items-center gap-4">
-      <div class="flex items-center gap-2">
-        <i class="fa-regular fa-compass text-xl"></i>
-        <h1 class="text-lg font-bold">東京自由行地圖筆記</h1>
+  <header class="bg-[#4f46e5] dark:bg-slate-800 text-white px-4 py-3 shadow-md sticky top-0 z-40 border-b dark:border-slate-700">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2.5">
+      
+      <!-- 第一排：標題 + 月亮太陽掣 + 主分頁切換 -->
+      <div class="w-full md:w-auto flex flex-wrap justify-between items-center gap-2">
+        <div class="flex items-center gap-2">
+          <i class="fa-regular fa-compass text-lg"></i>
+          <h1 class="text-base font-bold whitespace-nowrap">東京自由行地圖筆記</h1>
+          <!-- 🌙 / ☀️ 深色/淺色模式切換按鈕 (放標題旁最順手) -->
+          <button id="theme-toggle-btn" onclick="toggleDarkMode()" class="bg-indigo-700/80 hover:bg-indigo-600 dark:bg-slate-700 text-yellow-300 w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-sm transition ml-1" title="切換深色/淺色模式">
+            <i id="theme-icon" class="fa-solid fa-moon"></i>
+          </button>
+        </div>
+
+        <!-- 主分頁按鈕 -->
+        <nav class="flex items-center bg-indigo-700/70 dark:bg-slate-700 p-1 rounded-xl text-xs font-bold gap-1 w-full sm:w-auto justify-around">
+          <button id="nav-btn-map" onclick="switchMainTab('map')" class="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition whitespace-nowrap flex items-center justify-center gap-1">
+            <i class="fa-solid fa-map-location-dot"></i> 行程地圖
+          </button>
+          <button id="nav-btn-expenses" onclick="switchMainTab('expenses')" class="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition whitespace-nowrap flex items-center justify-center gap-1">
+            <i class="fa-solid fa-receipt"></i> 記帳收據
+          </button>
+          <button id="nav-btn-shopping" onclick="switchMainTab('shopping')" class="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition whitespace-nowrap flex items-center justify-center gap-1">
+            <i class="fa-solid fa-bag-shopping"></i> 想買相簿
+          </button>
+        </nav>
       </div>
-      <!-- 主分頁按鈕 -->
-      <nav class="flex items-center bg-indigo-700/70 p-1 rounded-xl text-xs font-bold gap-1">
-        <button id="nav-btn-map" onclick="switchMainTab('map')" class="px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition">
-          <i class="fa-solid fa-map-location-dot"></i> 行程地圖
-        </button>
-                <button id="nav-btn-expenses" onclick="switchMainTab('expenses')" class="px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition">
-          <i class="fa-solid fa-receipt"></i> 記帳與收據
-        </button>
-        <button id="nav-btn-shopping" onclick="switchMainTab('shopping')" class="px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition">
-          <i class="fa-solid fa-bag-shopping"></i> 想買清單相簿
-        </button>
-      </nav>
-    </div>
 
-    <div class="flex items-center gap-2">
-      <!-- 🌙 / ☀️ 深色/淺色模式切換按鈕 -->
-      <button id="theme-toggle-btn" onclick="toggleDarkMode()" class="bg-indigo-700/80 hover:bg-indigo-700 text-yellow-300 w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-sm transition mr-1" title="切換深色/淺色模式">
-        <i id="theme-icon" class="fa-solid fa-moon"></i>
-      </button>
+      <!-- 第二排：三個新增快捷按鈕 (強制單行不斷字) -->
+      <div class="w-full md:w-auto flex items-center justify-end gap-2">
+        <button onclick="openFHModal('flight')" class="flex-1 md:flex-initial justify-center bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+          <i class="fa-solid fa-plane"></i> + 航班
+        </button>
+        <button onclick="openFHModal('hotel')" class="flex-1 md:flex-initial justify-center bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+          <i class="fa-solid fa-hotel"></i> + 酒店
+        </button>
+        <button onclick="openAddModal()" class="flex-1 md:flex-initial justify-center bg-[#facc15] hover:bg-yellow-400 text-slate-900 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+          <i class="fa-solid fa-circle-plus"></i> 新增景點/食店
+        </button>
+      </div>
 
-      <button onclick="openFHModal('flight')"
-        <i class="fa-solid fa-plane"></i> + 新增航班
-      </button>
-      <button onclick="openFHModal('hotel')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition">
-        <i class="fa-solid fa-hotel"></i> + 新增酒店
-      </button>
-      <button onclick="openAddModal()" class="bg-[#facc15] hover:bg-yellow-400 text-slate-900 px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-sm transition">
-        <i class="fa-solid fa-circle-plus"></i> 新增景點/食店
-      </button>
     </div>
   </header>
 
@@ -187,19 +193,19 @@
       </div>
 
       <!-- 4. Google 大地圖總覽區塊 -->
-      <div id="map-section" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-        <div class="flex justify-between items-center mb-2 px-1">
-          <span class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
-            <i class="fa-solid fa-map text-indigo-600"></i> 東京區域 Google 地圖總覽
+      <!-- 4. Google 大地圖總覽區塊 -->
+      <div id="map-section" class="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-2.5">
+        <div class="flex justify-between items-center px-1 gap-2">
+          <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate">
+            <i class="fa-solid fa-map text-indigo-600 dark:text-indigo-400"></i> 東京地圖總覽
           </span>
-          <div class="flex items-center gap-2">
-            <!-- 📍 定位我的位置按鈕 -->
-            <button type="button" onclick="locateUserPosition()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-slate-700 dark:text-indigo-300 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition">
-              <i class="fa-solid fa-crosshairs"></i> 定位我
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" onclick="locateUserPosition()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+              <i class="fa-solid fa-location-crosshairs"></i> 定位我
             </button>
-            <span class="text-[10px] text-slate-400">點擊標記預覽</span>
           </div>
-        <div id="map"></div>
+        </div>
+        <div id="map" class="w-full"></div>
       </div>
 
       <!-- 目前區域提示 -->
@@ -642,9 +648,12 @@
       const btnExp = document.getElementById('nav-btn-expenses');
       const btnShop = document.getElementById('nav-btn-shopping');
 
-      btnMap.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
-      btnExp.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
-      btnShop.className = 'px-3 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition';
+      const baseClass = 'flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition whitespace-nowrap flex items-center justify-center gap-1';
+      const activeClass = 'flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition whitespace-nowrap flex items-center justify-center gap-1';
+
+      btnMap.className = baseClass;
+      btnExp.className = baseClass;
+      btnShop.className = baseClass;
 
       mapTab.classList.add('hidden');
       expTab.classList.add('hidden');
@@ -652,15 +661,15 @@
 
       if (tab === 'map') {
         mapTab.classList.remove('hidden');
-        btnMap.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition';
+        btnMap.className = activeClass;
         setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); }, 200);
       } else if (tab === 'expenses') {
         expTab.classList.remove('hidden');
-        btnExp.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition';
+        btnExp.className = activeClass;
         renderExpensesGroupedByDate();
       } else if (tab === 'shopping') {
         shopTab.classList.remove('hidden');
-        btnShop.className = 'px-3 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition';
+        btnShop.className = activeClass;
         renderShoppingAlbum();
       }
     };
