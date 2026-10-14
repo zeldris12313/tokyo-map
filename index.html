@@ -563,9 +563,45 @@
         <h3 class="font-bold text-slate-800 text-sm">管理類別 (拖拉排序)</h3>
         <button onclick="closeManageCategoriesModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="flex gap-2">
-        <input type="text" id="new-cat-input" placeholder="輸入新類別" class="flex-1 p-2 border rounded-xl text-xs outline-none">
-        <button onclick="addCategory()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold">新增</button>
+      <div class="space-y-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+        <div class="flex gap-2">
+          <input type="text" id="new-cat-input" placeholder="輸入新類別名稱 (如: 動漫)" class="flex-1 p-2 bg-white border rounded-xl text-xs outline-none">
+          <button onclick="addCategory()" class="bg-indigo-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold hover:bg-indigo-700 shrink-0">新增</button>
+        </div>
+        <div class="flex gap-2 text-xs">
+          <!-- 挑選顏色 -->
+          <div class="flex-1 flex items-center gap-1.5 bg-white p-1.5 rounded-lg border">
+            <span class="text-slate-400 text-[11px] shrink-0">顏色:</span>
+            <select id="new-cat-color" class="w-full bg-transparent outline-none text-xs font-medium">
+              <option value="#f59e0b">橙黃 (Amber)</option>
+              <option value="#10b981">翠綠 (Emerald)</option>
+              <option value="#78716c">灰褐 (Stone)</option>
+              <option value="#ec4899">亮粉 (Pink)</option>
+              <option value="#8b5cf6">紫色 (Purple)</option>
+              <option value="#0284c7">天空藍 (Sky)</option>
+              <option value="#e11d48">玫瑰紅 (Rose)</option>
+              <option value="#0d9488">松石青 (Teal)</option>
+              <option value="#ea580c">烈焰橙 (Orange)</option>
+              <option value="#4f46e5">深靛藍 (Indigo)</option>
+            </select>
+          </div>
+          <!-- 挑選圖示 -->
+          <div class="flex-1 flex items-center gap-1.5 bg-white p-1.5 rounded-lg border">
+            <span class="text-slate-400 text-[11px] shrink-0">圖示:</span>
+            <select id="new-cat-icon" class="w-full bg-transparent outline-none text-xs font-medium">
+              <option value="fa-utensils">🍴 餐飲美食</option>
+              <option value="fa-torii-gate">⛩️ 神社景點</option>
+              <option value="fa-mug-hot">☕ 咖啡甜品</option>
+              <option value="fa-bag-shopping">🛍️ 購物商場</option>
+              <option value="fa-gamepad">🎮 玩具動漫</option>
+              <option value="fa-camera">📸 打卡拍照</option>
+              <option value="fa-cart-shopping">🛒 超市雜貨</option>
+              <option value="fa-spa">♨️ 溫泉休閒</option>
+              <option value="fa-train">🚇 交通樞紐</option>
+              <option value="fa-tag">🏷️ 其他標籤</option>
+            </select>
+          </div>
+        </div>
       </div>
       <div id="manage-cats-list" class="space-y-2 max-h-60 overflow-y-auto text-xs"></div>
     </div>
@@ -604,21 +640,21 @@
 
     const defaultRegions = ["東京", "新宿", "澀谷", "淺草/上野", "原宿/表參道", "秋葉原", "池袋", "六本木", "築地/台場"];
     const categoryPalette = [
-      { color: "bg-amber-100 text-amber-800 border-amber-300", activeBg: "bg-amber-600 text-white", icon: "fa-utensils" },
-      { color: "bg-emerald-100 text-emerald-800 border-emerald-300", activeBg: "bg-emerald-600 text-white", icon: "fa-torii-gate" },
-      { color: "bg-stone-100 text-stone-800 border-stone-300", activeBg: "bg-stone-600 text-white", icon: "fa-mug-hot" },
-      { color: "bg-pink-100 text-pink-800 border-pink-300", activeBg: "bg-pink-600 text-white", icon: "fa-bag-shopping" },
-      { color: "bg-purple-100 text-purple-800 border-purple-300", activeBg: "bg-purple-600 text-white", icon: "fa-gamepad" },
-      { color: "bg-sky-100 text-sky-800 border-sky-300", activeBg: "bg-sky-600 text-white", icon: "fa-camera" },
-      { color: "bg-rose-100 text-rose-800 border-rose-300", activeBg: "bg-rose-600 text-white", icon: "fa-heart" },
-      { color: "bg-teal-100 text-teal-800 border-teal-300", activeBg: "bg-teal-600 text-white", icon: "fa-cart-shopping" }
+      { hex: "#f59e0b", color: "bg-amber-100 text-amber-800 border-amber-300", activeBg: "bg-amber-600 text-white", icon: "fa-utensils" },
+      { hex: "#10b981", color: "bg-emerald-100 text-emerald-800 border-emerald-300", activeBg: "bg-emerald-600 text-white", icon: "fa-torii-gate" },
+      { hex: "#78716c", color: "bg-stone-100 text-stone-800 border-stone-300", activeBg: "bg-stone-600 text-white", icon: "fa-mug-hot" },
+      { hex: "#ec4899", color: "bg-pink-100 text-pink-800 border-pink-300", activeBg: "bg-pink-600 text-white", icon: "fa-bag-shopping" },
+      { hex: "#8b5cf6", color: "bg-purple-100 text-purple-800 border-purple-300", activeBg: "bg-purple-600 text-white", icon: "fa-gamepad" },
+      { hex: "#0284c7", color: "bg-sky-100 text-sky-800 border-sky-300", activeBg: "bg-sky-600 text-white", icon: "fa-camera" },
+      { hex: "#e11d48", color: "bg-rose-100 text-rose-800 border-rose-300", activeBg: "bg-rose-600 text-white", icon: "fa-heart" },
+      { hex: "#0d9488", color: "bg-teal-100 text-teal-800 border-teal-300", activeBg: "bg-teal-600 text-white", icon: "fa-cart-shopping" }
     ];
 
     const defaultCategories = [
-      { name: "美食", icon: "fa-utensils", color: "bg-amber-100 text-amber-800 border-amber-200", activeBg: "bg-amber-600 text-white" },
-      { name: "景點", icon: "fa-torii-gate", color: "bg-emerald-100 text-emerald-800 border-emerald-200", activeBg: "bg-emerald-600 text-white" },
-      { name: "咖啡", icon: "fa-mug-hot", color: "bg-stone-100 text-stone-800 border-stone-200", activeBg: "bg-stone-600 text-white" },
-      { name: "購物", icon: "fa-bag-shopping", color: "bg-pink-100 text-pink-800 border-pink-200", activeBg: "bg-pink-600 text-white" }
+      { name: "美食", icon: "fa-utensils", hex: "#f59e0b", color: "bg-amber-100 text-amber-800 border-amber-200", activeBg: "bg-amber-600 text-white" },
+      { name: "景點", icon: "fa-torii-gate", hex: "#10b981", color: "bg-emerald-100 text-emerald-800 border-emerald-200", activeBg: "bg-emerald-600 text-white" },
+      { name: "咖啡", icon: "fa-mug-hot", hex: "#78716c", color: "bg-stone-100 text-stone-800 border-stone-200", activeBg: "bg-stone-600 text-white" },
+      { name: "購物", icon: "fa-bag-shopping", hex: "#ec4899", color: "bg-pink-100 text-pink-800 border-pink-200", activeBg: "bg-pink-600 text-white" }
     ];
 
     let regions = defaultRegions;
@@ -1564,22 +1600,41 @@
 
     window.addCategory = () => {
       const val = document.getElementById('new-cat-input').value.trim();
+      const chosenHex = document.getElementById('new-cat-color').value;
+      const chosenIcon = document.getElementById('new-cat-icon').value;
+
       if (val && !categories.some(c => c.name === val)) {
-        categories.push({ name: val, icon: "fa-tag", color: "bg-blue-100 text-blue-800" }); saveCloudConfig();
+        categories.push({
+          name: val,
+          icon: chosenIcon,
+          hex: chosenHex,
+          color: "bg-slate-100 text-slate-800 border-slate-300",
+          activeBg: "bg-slate-800 text-white"
+        });
+        saveCloudConfig();
         document.getElementById('new-cat-input').value = '';
-        renderManageCategories(); renderApp();
+        renderManageCategories();
+        renderApp();
       }
     };
+
     window.deleteCategory = (name) => {
-      categories = categories.filter(c => c.name !== name); saveCloudConfig();
-      renderManageCategories(); renderApp();
+      categories = categories.filter(c => c.name !== name);
+      saveCloudConfig();
+      renderManageCategories();
+      renderApp();
     };
 
     function renderManageCategories() {
       document.getElementById('manage-cats-list').innerHTML = categories.map(c => `
         <div data-cat="${c.name}" class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border">
-          <div class="flex items-center gap-2"><i class="fa-solid fa-grip-vertical drag-handle cursor-grab text-slate-300"></i><span>${c.name}</span></div>
-          <button onclick="deleteCategory('${c.name}')" class="text-red-400"><i class="fa-solid fa-trash-can"></i></button>
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-grip-vertical drag-handle cursor-grab text-slate-300"></i>
+            <span class="w-3.5 h-3.5 rounded-full inline-block border" style="background-color: ${c.hex || '#4f46e5'};"></span>
+            <i class="fa-solid ${c.icon || 'fa-tag'} text-xs text-slate-500"></i>
+            <span class="font-bold text-slate-700">${c.name}</span>
+          </div>
+          <button onclick="deleteCategory('${c.name}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       `).join('');
     }
@@ -1859,7 +1914,7 @@
       document.getElementById('current-region-label').innerText = currentRegion === 'all' ? '全部車站' : currentRegion;
       document.getElementById('places-count').innerText = `共 ${filtered.length} 個地點`;
 
-      // 5. 地圖 Pin 點
+      // 5. 地圖 Pin 點 (依分類獨立著色與圖案)
       initMap();
       Object.values(markersMap).forEach(m => leafletMap.removeLayer(m));
       markersMap = {};
@@ -1867,11 +1922,36 @@
 
       filtered.forEach(item => {
         if (item.lat && item.lng) {
-          const marker = L.marker([item.lat, item.lng]).addTo(leafletMap);
+          // 取得該項目對應的分類配色與圖示
+          const catIndex = categories.findIndex(c => c.name === item.category);
+          const matchedCat = catIndex !== -1 ? categories[catIndex] : null;
+          const fallbackPalette = categoryPalette[(catIndex >= 0 ? catIndex : 0) % categoryPalette.length];
+
+          const pinColor = (matchedCat && matchedCat.hex) ? matchedCat.hex : fallbackPalette.hex;
+          const pinIcon = (matchedCat && matchedCat.icon) ? matchedCat.icon : fallbackPalette.icon;
+
+          // 製作專屬水滴型 Pin Marker
+          const customPin = L.divIcon({
+            className: 'custom-cat-pin',
+            html: `
+              <div style="position: relative; width: 30px; height: 38px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+                <svg viewBox="0 0 30 38" width="30" height="38" style="position: absolute; top:0; left:0;">
+                  <path d="M15 0 C6.7 0 0 6.7 0 15 C0 24 15 38 15 38 C15 38 30 24 30 15 C30 6.7 23.3 0 15 0 Z" fill="${pinColor}" stroke="#ffffff" stroke-width="1.5"/>
+                  <circle cx="15" cy="14" r="9" fill="#ffffff" />
+                </svg>
+                <i class="fa-solid ${pinIcon}" style="position: relative; z-index: 2; color: ${pinColor}; font-size: 11px; margin-top: -8px;"></i>
+              </div>
+            `,
+            iconSize: [30, 38],
+            iconAnchor: [15, 38],
+            popupAnchor: [0, -36]
+          });
+
+          const marker = L.marker([item.lat, item.lng], { icon: customPin }).addTo(leafletMap);
           marker.bindPopup(`
             <div class="p-1 text-center font-sans">
               <div class="font-bold text-xs text-slate-800 mb-0.5">${item.title}</div>
-              <div class="text-[10px] text-slate-500 mb-2">📍 ${item.region} | ${item.category}</div>
+              <div class="text-[10px] text-slate-500 mb-2">📍 ${item.region} | <span style="color: ${pinColor}; font-weight: bold;">${item.category}</span></div>
               <button onclick="scrollToCard('${item.id}')" class="bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-md hover:bg-indigo-700">👇 查看卡片</button>
             </div>
           `);
