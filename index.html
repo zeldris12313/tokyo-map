@@ -794,6 +794,7 @@
     };
 
     // ⭐ 讀取手機 GPS（防飛離東京保護機制） ⭐
+    // ⭐ 讀取手機 GPS 並直接顯示所在位置（無地區限制） ⭐
     window.locateUserPosition = () => {
       if (!navigator.geolocation) {
         return alert("你的瀏覽器不支援 GPS 定位功能！");
@@ -810,15 +811,7 @@
           if (userLocationMarker) leafletMap.removeLayer(userLocationMarker);
           if (userLocationCircle) leafletMap.removeLayer(userLocationCircle);
 
-          // 判斷現時 GPS 是否在日本關東/東京範圍內 (緯度 34.5~36.5, 經度 138.5~141.0)
-          const isInTokyoArea = (lat >= 34.5 && lat <= 36.5 && lng >= 138.5 && lng <= 141.0);
-
-          if (!isInTokyoArea) {
-            alert(`📍 已偵測到你的 GPS 位置！\n但因為你目前不在東京範圍內（防止地圖飛離東京），畫面會保留在東京。\n等你去到東京當地撳呢粒掣，就會直接顯示你喺東京街頭嘅位置！`);
-            return;
-          }
-
-          // 身處東京時，繪製精準度半徑圓圈與藍點
+          // 1. 繪製精準度半徑圓圈（淺藍色）
           userLocationCircle = L.circle([lat, lng], {
             radius: accuracy,
             color: '#3b82f6',
@@ -827,6 +820,7 @@
             weight: 1.5
           }).addTo(leafletMap);
 
+          // 2. 繪製藍色定位圓點
           const userIcon = L.divIcon({
             className: 'custom-user-marker',
             html: `
@@ -847,6 +841,7 @@
             </div>
           `).openPopup();
 
+          // 直接將地圖鏡頭移動到你所在的位置
           leafletMap.setView([lat, lng], 16, { animate: true });
         },
         (error) => {
