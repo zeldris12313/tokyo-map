@@ -195,17 +195,20 @@
       <!-- 4. Google 大地圖總覽區塊 -->
       <!-- 4. Google 大地圖總覽區塊 -->
       <div id="map-section" class="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-2.5">
-        <div class="flex justify-between items-center px-1 gap-2">
-          <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 truncate">
-            <i class="fa-solid fa-map text-indigo-600 dark:text-indigo-400"></i> 東京地圖總覽
+        <div class="flex flex-wrap justify-between items-center px-1 gap-2">
+          <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-map text-indigo-600 dark:text-indigo-400"></i> 東京區域 Google 地圖總覽
           </span>
-          <div class="flex items-center gap-2 shrink-0">
-            <button type="button" onclick="locateUserPosition()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" onclick="resetMapToTokyo()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+              <i class="fa-solid fa-tower-broadcast text-rose-500"></i> 返回東京
+            </button>
+            <button type="button" onclick="locateUserPosition()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
               <i class="fa-solid fa-location-crosshairs"></i> 定位我
             </button>
           </div>
         </div>
-        <div id="map" class="w-full"></div>
+        <div id="map"></div>
       </div>
 
       <!-- 目前區域提示 -->
@@ -775,6 +778,21 @@
     }
 
     // ⭐ 讀取手機/瀏覽器 GPS 並在地圖標記「你身處的位置」 ⭐
+    // ⭐ 一鍵返回東京景點範圍 ⭐
+    window.resetMapToTokyo = () => {
+      if (!leafletMap) initMap();
+      const bounds = [];
+      Object.values(markersMap).forEach(m => {
+        bounds.push(m.getLatLng());
+      });
+      if (bounds.length > 0) {
+        leafletMap.fitBounds(bounds, { padding: [30, 30], animate: true });
+      } else {
+        leafletMap.setView([35.6812, 139.7671], 12, { animate: true });
+      }
+    };
+
+    // ⭐ 讀取手機 GPS（防飛離東京保護機制） ⭐
     window.locateUserPosition = () => {
       if (!navigator.geolocation) {
         return alert("你的瀏覽器不支援 GPS 定位功能！");
@@ -788,11 +806,18 @@
 
           if (!leafletMap) initMap();
 
-          // 如果之前已經有定位圖標，先移除舊圖標
           if (userLocationMarker) leafletMap.removeLayer(userLocationMarker);
           if (userLocationCircle) leafletMap.removeLayer(userLocationCircle);
 
-          // 1. 繪製精準度半徑圓圈（淺藍色）
+          // 判斷現時 GPS 是否在日本關東/東京範圍內 (緯度 34.5~36.5, 經度 138.5~141.0)
+          const isInTokyoArea = (lat >= 34.5 && lat <= 36.5 && lng >= 138.5 && lng <= 141.0);
+
+          if (!isInTokyoArea) {
+            alert(`📍 已偵測到你的 GPS 位置！\n但因為你目前不在東京範圍內（防止地圖飛離東京），畫面會保留在東京。\n等你去到東京當地撳呢粒掣，就會直接顯示你喺東京街頭嘅位置！`);
+            return;
+          }
+
+          // 身處東京時，繪製精準度半徑圓圈與藍點
           userLocationCircle = L.circle([lat, lng], {
             radius: accuracy,
             color: '#3b82f6',
@@ -801,12 +826,11 @@
             weight: 1.5
           }).addTo(leafletMap);
 
-          // 2. 繪製藍色脈衝定位圓點
           const userIcon = L.divIcon({
             className: 'custom-user-marker',
             html: `
               <div style="position: relative; width: 18px; height: 18px;">
-                <div style="position: absolute; width: 18px; height: 18px; background: rgba(59, 130, 246, 0.4); border-radius: 50%; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+                <div style="position: absolute; width: 18px; height: 18px; background: rgba(59, 130, 246, 0.4); border-radius: 50%;"></div>
                 <div style="position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #2563eb; border: 2.5px solid #ffffff; border-radius: 50%; box-shadow: 0 0 6px rgba(0,0,0,0.4);"></div>
               </div>
             `,
@@ -822,25 +846,12 @@
             </div>
           `).openPopup();
 
-          // 地圖縮放並平移到你的位置
           leafletMap.setView([lat, lng], 16, { animate: true });
         },
         (error) => {
-          let msg = "無法取得你的 GPS 位置。";
-          if (error.code === error.PERMISSION_DENIED) {
-            msg = "定位已被拒絕。請到 iPhone 的「設定」>「Safari」>「位置」中允許此網站存取 GPS 定位。";
-          } else if (error.code === error.POSITION_UNAVAILABLE) {
-            msg = "找不到位置資訊，請確認 iPhone 已開啟 GPS 及網絡。";
-          } else if (error.code === error.TIMEOUT) {
-            msg = "定位請求逾時，請再試一次。";
-          }
-          alert(msg);
+          alert("無法取得 GPS 位置，請確認已開啟定位權限。");
         },
-        {
-          enableHighAccuracy: true, // 開啟精準 GPS
-          timeout: 10000,
-          maximumAge: 0
-        }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     };
 
