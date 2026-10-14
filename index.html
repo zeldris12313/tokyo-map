@@ -193,22 +193,23 @@
       </div>
 
       <!-- 4. Google 大地圖總覽區塊 -->
-      <!-- 4. Google 大地圖總覽區塊 -->
-      <div id="map-section" class="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-2.5">
-        <div class="flex flex-wrap justify-between items-center px-1 gap-2">
+      <div id="map-section" class="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col gap-2">
+        
+        <!-- 上排：標題與「定位我」按鈕 (獨立一層) -->
+        <div class="w-full flex justify-between items-center px-1">
           <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-map text-indigo-600 dark:text-indigo-400"></i> 東京區域 Google 地圖總覽
+            <i class="fa-solid fa-map text-indigo-600 dark:text-indigo-400"></i> 東京地圖總覽
           </span>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button type="button" onclick="resetMapToTokyo()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
-              <i class="fa-solid fa-tower-broadcast text-rose-500"></i> 返回東京
-            </button>
-            <button type="button" onclick="locateUserPosition()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
-              <i class="fa-solid fa-location-crosshairs"></i> 定位我
-            </button>
-          </div>
+          <button type="button" onclick="locateUserPosition()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+            <i class="fa-solid fa-location-crosshairs"></i> 定位我
+          </button>
         </div>
-        <div id="map"></div>
+
+        <!-- 下排：100% 滿版闊度地圖 (獨立一層) -->
+        <div class="w-full">
+          <div id="map" class="w-full"></div>
+        </div>
+
       </div>
 
       <!-- 目前區域提示 -->
