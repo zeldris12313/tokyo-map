@@ -192,8 +192,13 @@
           <span class="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
             <i class="fa-solid fa-map text-indigo-600"></i> 東京區域 Google 地圖總覽
           </span>
-          <span class="text-[10px] text-slate-400">點擊標記預覽</span>
-        </div>
+          <div class="flex items-center gap-2">
+            <!-- 📍 定位我的位置按鈕 -->
+            <button type="button" onclick="locateUserPosition()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-slate-700 dark:text-indigo-300 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition">
+              <i class="fa-solid fa-crosshairs"></i> 定位我
+            </button>
+            <span class="text-[10px] text-slate-400">點擊標記預覽</span>
+          </div>
         <div id="map"></div>
       </div>
 
@@ -622,6 +627,8 @@
     let modalAdjustMap = null;
     let modalAdjustMarker = null;
     let markersMap = {};
+    let userLocationMarker = null;
+    let userLocationCircle = null;
 
     let lightboxImages = [];
     let currentLightboxIndex = 0;
@@ -757,6 +764,76 @@
         alert('跳轉失敗，請確認網絡連接。');
       }
     }
+
+    // ⭐ 讀取手機/瀏覽器 GPS 並在地圖標記「你身處的位置」 ⭐
+    window.locateUserPosition = () => {
+      if (!navigator.geolocation) {
+        return alert("你的瀏覽器不支援 GPS 定位功能！");
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = position.coords.accuracy;
+
+          if (!leafletMap) initMap();
+
+          // 如果之前已經有定位圖標，先移除舊圖標
+          if (userLocationMarker) leafletMap.removeLayer(userLocationMarker);
+          if (userLocationCircle) leafletMap.removeLayer(userLocationCircle);
+
+          // 1. 繪製精準度半徑圓圈（淺藍色）
+          userLocationCircle = L.circle([lat, lng], {
+            radius: accuracy,
+            color: '#3b82f6',
+            fillColor: '#93c5fd',
+            fillOpacity: 0.25,
+            weight: 1.5
+          }).addTo(leafletMap);
+
+          // 2. 繪製藍色脈衝定位圓點
+          const userIcon = L.divIcon({
+            className: 'custom-user-marker',
+            html: `
+              <div style="position: relative; width: 18px; height: 18px;">
+                <div style="position: absolute; width: 18px; height: 18px; background: rgba(59, 130, 246, 0.4); border-radius: 50%; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+                <div style="position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #2563eb; border: 2.5px solid #ffffff; border-radius: 50%; box-shadow: 0 0 6px rgba(0,0,0,0.4);"></div>
+              </div>
+            `,
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
+          });
+
+          userLocationMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
+          userLocationMarker.bindPopup(`
+            <div class="text-center p-1 text-xs font-bold text-slate-800">
+              📍 你現時身處的位置<br>
+              <span class="text-[10px] text-slate-500 font-normal">精確度約 ±${Math.round(accuracy)} 米</span>
+            </div>
+          `).openPopup();
+
+          // 地圖縮放並平移到你的位置
+          leafletMap.setView([lat, lng], 16, { animate: true });
+        },
+        (error) => {
+          let msg = "無法取得你的 GPS 位置。";
+          if (error.code === error.PERMISSION_DENIED) {
+            msg = "定位已被拒絕。請到 iPhone 的「設定」>「Safari」>「位置」中允許此網站存取 GPS 定位。";
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            msg = "找不到位置資訊，請確認 iPhone 已開啟 GPS 及網絡。";
+          } else if (error.code === error.TIMEOUT) {
+            msg = "定位請求逾時，請再試一次。";
+          }
+          alert(msg);
+        },
+        {
+          enableHighAccuracy: true, // 開啟精準 GPS
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    };
 
     // ⭐ 在 Google Maps 打開搜尋 ⭐
     window.openGoogleMapsSearch = () => {
