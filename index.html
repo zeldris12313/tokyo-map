@@ -816,7 +816,22 @@
 
     // ⭐ 讀取手機/瀏覽器 GPS 並在地圖標記「你身處的位置」 ⭐
     // ⭐ 一鍵返回東京景點範圍 ⭐
+    // ⭐ 一鍵返回東京標記總覽（自動停止實時追蹤） ⭐
     window.resetMapToTokyo = () => {
+      // 停止背景持續追蹤
+      if (window.watchId !== null) {
+        navigator.geolocation.clearWatch(window.watchId);
+        window.watchId = null;
+      }
+      window.isTrackingUser = false;
+      window.isUserLocating = false;
+
+      const locateBtn = document.querySelector("button[onclick='locateUserPosition()']");
+      if (locateBtn) {
+        locateBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> 定位我';
+        locateBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap";
+      }
+
       if (!leafletMap) initMap();
       const bounds = [];
       Object.values(markersMap).forEach(m => {
@@ -828,12 +843,11 @@
         leafletMap.setView([35.6812, 139.7671], 12, { animate: true });
       }
     };
-
-    // ⭐ 讀取手機 GPS（防飛離東京保護機制） ⭐
-    // ⭐ 讀取手機 GPS 並直接顯示所在位置（無地區限制） ⭐
-    // ⭐ 讀取手機 GPS 並直接顯示所在位置（完整獨立防錯版） ⭐
+        // ⭐ 實時 GPS 動態追蹤（邊行邊跟隨） ⭐
     window.userLocMarker = null;
     window.userLocCircle = null;
+    window.watchId = null; // 記錄持續追蹤的監聽 ID
+    window.isTrackingUser = false; // 是否正在持續追蹤
 
     window.locateUserPosition = () => {
       if (!navigator.geolocation) {
@@ -841,55 +855,98 @@
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(
+      const locateBtn = document.querySelector("button[onclick='locateUserPosition()']");
+
+      // 情況 A：如果已經在追蹤中，再次點擊即「停止追蹤」節省電量
+      if (window.isTrackingUser && window.watchId !== null) {
+        navigator.geolocation.clearWatch(window.watchId);
+        window.watchId = null;
+        window.isTrackingUser = false;
+        window.isUserLocating = false;
+
+        if (locateBtn) {
+          locateBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> 定位我';
+          locateBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap";
+        }
+        return;
+      }
+
+      // 情況 B：啟動實時連續追蹤
+      window.isTrackingUser = true;
+      window.isUserLocating = true;
+
+      if (locateBtn) {
+        locateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 追蹤中...';
+        locateBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap animate-pulse";
+      }
+
+      window.watchId = navigator.geolocation.watchPosition(
         (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
-          const accuracy = position.coords.accuracy || 30;
+          const accuracy = position.coords.accuracy || 20;
 
           if (!leafletMap) initMap();
 
-          // 安全移除舊的定位藍點與光圈
-          if (window.userLocMarker) {
-            leafletMap.removeLayer(window.userLocMarker);
-          }
+          // 1. 更新或建立半徑誤差圈
           if (window.userLocCircle) {
-            leafletMap.removeLayer(window.userLocCircle);
+            window.userLocCircle.setLatLng([lat, lng]);
+            window.userLocCircle.setRadius(accuracy);
+          } else {
+            window.userLocCircle = L.circle([lat, lng], {
+              radius: accuracy,
+              color: '#2563eb',
+              fillColor: '#60a5fa',
+              fillOpacity: 0.2,
+              weight: 1.5
+            }).addTo(leafletMap);
           }
 
-          // 1. 繪製精準度半徑圓圈
-          window.userLocCircle = L.circle([lat, lng], {
-            radius: accuracy,
-            color: '#3b82f6',
-            fillColor: '#93c5fd',
-            fillOpacity: 0.25,
-            weight: 1.5
-          }).addTo(leafletMap);
-
-          // 2. 繪製藍色定位圓點
-          const userIcon = L.divIcon({
+          // 2. 更新或建立動態追蹤藍點
+          const userPulseIcon = L.divIcon({
             className: '',
-            html: `<div style="width:16px;height:16px;background:#2563eb;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(0,0,0,0.5);"></div>`,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
+            html: `
+              <div style="position:relative; width:20px; height:20px; display:flex; align-items:center; justify-content:center;">
+                <div style="position:absolute; width:20px; height:20px; border-radius:50%; background:rgba(37,99,235,0.4); animation: ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+                <div style="width:14px; height:14px; border-radius:50%; background:#2563eb; border:2.5px solid #ffffff; box-shadow:0 0 6px rgba(0,0,0,0.45); z-index:2;"></div>
+              </div>
+            `,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
           });
 
-          window.userLocMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
-          window.userLocMarker.bindPopup(`
-            <div style="text-align:center;font-size:12px;font-weight:bold;color:#1e293b;">
-              📍 你目前所在位置<br>
-              <span style="font-size:10px;color:#64748b;font-weight:normal;">誤差約 ±${Math.round(accuracy)}m</span>
-            </div>
-          `).openPopup();
+          if (window.userLocMarker) {
+            window.userLocMarker.setLatLng([lat, lng]);
+          } else {
+            window.userLocMarker = L.marker([lat, lng], { icon: userPulseIcon }).addTo(leafletMap);
+            window.userLocMarker.bindPopup(`
+              <div style="text-align:center; font-size:12px; font-weight:bold; color:#1e293b;">
+                📍 你現時身處的位置 (實時更新中)<br>
+                <span style="font-size:10px; color:#64748b; font-weight:normal;">精確度約 ±${Math.round(accuracy)}m</span>
+              </div>
+            `);
+          }
 
-          // 強制重新計算地圖尺寸並移動到你的位置
-          leafletMap.invalidateSize();
-          leafletMap.setView([lat, lng], 16, { animate: true });
+          // 保持地圖平滑置中跟隨你的腳步
+          if (window.isUserLocating) {
+            leafletMap.setView([lat, lng], leafletMap.getZoom() < 16 ? 16 : leafletMap.getZoom(), { animate: true });
+          }
         },
         (error) => {
-          alert("無法取得定位（錯誤碼 " + error.code + "）：" + error.message + "\n請確認 iPhone「設定 > 私隱與保安 > 定位服務 > Safari 網站」已設為「使用 App 期間」。");
+          console.error("GPS 追蹤錯誤：", error);
+          window.isTrackingUser = false;
+          window.isUserLocating = false;
+          if (locateBtn) {
+            locateBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> 定位我';
+            locateBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap";
+          }
+          alert("無法持續取得 GPS 定位，請確認 iPhone 定位權限設定。");
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        {
+          enableHighAccuracy: true, // 使用最高精度 GPS
+          timeout: 15000,
+          maximumAge: 1000 // 每秒允許讀取最新數據
+        }
       );
     };
 
