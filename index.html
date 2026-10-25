@@ -285,24 +285,36 @@
           </div>
         </div>
 
-        <div>
-          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">消費日期 *</label>
-          <input type="date" id="exp-date" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block font-medium text-slate-700 dark:text-slate-300">總金額 (日圓 JPY) *</label>
+            <button type="button" onclick="calcTotalFromSubItems()" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-calculator"></i> 自動加總細項
+            </button>
+          </div>
+          <input type="number" id="exp-amount" placeholder="可手動輸入或點自動加總" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-bold bg-white text-slate-800">
         </div>
 
-        <div>
-          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">品項 / 店家 *</label>
-          <input type="text" id="exp-title" placeholder="例如: 7-Eleven 零食 / 松本清" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+        <div class="md:col-span-3">
+          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">整體備註 / 簡介 (選填)</label>
+          <input type="text" id="exp-items" placeholder="例如: 涉谷 PARCO 戰利品、便利店宵夜..." class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
         </div>
 
-        <div>
-          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">金額 (日圓 JPY) *</label>
-          <input type="number" id="exp-amount" placeholder="例如: 1580" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-bold bg-white">
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">詳細項目 / 備註</label>
-          <input type="text" id="exp-items" placeholder="例如: 水果軟糖 x2, 綠茶, 飯糰..." class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+        <!-- ⭐ 可選：戰利品個別相片與個別價錢區塊 ⭐ -->
+        <div class="md:col-span-3 bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2.5">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <i class="fa-solid fa-tags text-indigo-600"></i> 單品細項記錄 (可再加相片與單獨價錢，選填)
+            </span>
+            <button type="button" onclick="addSubItemRow()" class="bg-indigo-50 dark:bg-slate-600 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition">
+              <i class="fa-solid fa-plus"></i> + 新增單品
+            </button>
+          </div>
+          
+          <div id="sub-items-container" class="space-y-2">
+            <!-- 動態加入單品列 -->
+          </div>
+          <p class="text-[10px] text-slate-400">💡 提示：如果只影咗成張單，此處留空唔填都完全無問題！</p>
         </div>
 
         <div class="flex items-end gap-2">
@@ -1218,6 +1230,90 @@
     };
 
     // 儲存或更新花費
+    // ===== 戰利品細項管理與自動加總 =====
+    let currentSubItems = [];
+
+    // 新增單品輸入行
+    window.addSubItemRow = (name = '', price = '', img = '') => {
+      const container = document.getElementById('sub-items-container');
+      const rowId = 'sub-row-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+      
+      const rowDiv = document.createElement('div');
+      rowDiv.id = rowId;
+      rowDiv.className = "flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-600 text-xs";
+      rowDiv.innerHTML = `
+        <div class="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 flex items-center justify-center">
+          <img src="${img || ''}" class="sub-img-preview w-full h-full object-cover ${img ? '' : 'hidden'}">
+          <i class="fa-solid fa-image text-slate-300 sub-img-placeholder ${img ? 'hidden' : ''}"></i>
+          <input type="file" accept="image/*" onchange="previewSubItemImage(event, '${rowId}')" class="absolute inset-0 opacity-0 cursor-pointer text-[0px]" title="上傳物品相片">
+          <input type="hidden" class="sub-img-data" value="${img || ''}">
+        </div>
+        <input type="text" placeholder="品名 (例: 盲盒/防曬)" value="${name}" class="sub-item-name flex-1 min-w-[110px] p-1.5 border border-slate-200 dark:border-slate-600 rounded-lg outline-none bg-transparent">
+        <div class="flex items-center gap-1 shrink-0">
+          <span class="text-slate-400 font-mono">¥</span>
+          <input type="number" placeholder="金額" value="${price}" oninput="calcTotalFromSubItems(false)" class="sub-item-price w-20 p-1.5 border border-slate-200 dark:border-slate-600 rounded-lg outline-none font-mono font-bold bg-transparent">
+        </div>
+        <button type="button" onclick="removeSubItemRow('${rowId}')" class="text-slate-400 hover:text-red-500 p-1 shrink-0">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      `;
+      container.appendChild(rowDiv);
+    };
+
+    window.previewSubItemImage = async (e, rowId) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const b64 = await getBase64Image(file);
+      const row = document.getElementById(rowId);
+      if (row) {
+        row.querySelector('.sub-img-preview').src = b64;
+        row.querySelector('.sub-img-preview').classList.remove('hidden');
+        row.querySelector('.sub-img-placeholder').classList.add('hidden');
+        row.querySelector('.sub-img-data').value = b64;
+      }
+    };
+
+    window.removeSubItemRow = (rowId) => {
+      const row = document.getElementById(rowId);
+      if (row) row.remove();
+      calcTotalFromSubItems(false);
+    };
+
+    // 自動計算細項總和填入總額
+    window.calcTotalFromSubItems = (showAlert = true) => {
+      const prices = document.querySelectorAll('.sub-item-price');
+      let sum = 0;
+      let count = 0;
+      prices.forEach(p => {
+        const val = parseFloat(p.value);
+        if (!isNaN(val) && val > 0) {
+          sum += val;
+          count++;
+        }
+      });
+      if (count > 0) {
+        document.getElementById('exp-amount').value = sum;
+      } else if (showAlert) {
+        alert("目前細項未有填寫金額，請先填寫細項金額！");
+      }
+    };
+
+    // 收集現有單品列資料
+    function collectSubItemsData() {
+      const rows = document.querySelectorAll('#sub-items-container > div');
+      const list = [];
+      rows.forEach(r => {
+        const name = r.querySelector('.sub-item-name')?.value.trim() || '';
+        const price = parseFloat(r.querySelector('.sub-item-price')?.value) || 0;
+        const img = r.querySelector('.sub-img-data')?.value || '';
+        if (name || price > 0 || img) {
+          list.push({ name, price, img });
+        }
+      });
+      return list;
+    }
+
+    // 儲存或更新花費
     document.getElementById('expense-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const editId = document.getElementById('exp-edit-id').value;
@@ -1228,11 +1324,14 @@
         receiptImg = await getBase64Image(fileInput.files[0]);
       }
 
+      const subItems = collectSubItemsData();
+
       const expenseData = {
         date: document.getElementById('exp-date').value,
         title: document.getElementById('exp-title').value.trim(),
         amount: parseFloat(document.getElementById('exp-amount').value) || 0,
         items: document.getElementById('exp-items').value.trim(),
+        subItems: subItems,
         updatedAt: new Date()
       };
 
@@ -1246,12 +1345,11 @@
       } else {
         expenseData.createdAt = new Date();
         await addDoc(collection(db, "expenses"), expenseData);
-        document.getElementById('expense-form').reset();
-        document.getElementById('ocr-status').innerText = '';
+        cancelExpenseEdit();
       }
     });
 
-    // ⭐ 點擊鉛筆進入「編輯花費」模式 ⭐
+    // 編輯花費時，自動載入收據與所有單品
     window.editExpense = (id) => {
       const exp = allExpenses.find(item => item.id === id);
       if (!exp) return;
@@ -1262,17 +1360,25 @@
       document.getElementById('exp-amount').value = exp.amount || '';
       document.getElementById('exp-items').value = exp.items || '';
 
+      // 載入細項
+      document.getElementById('sub-items-container').innerHTML = '';
+      if (exp.subItems && Array.isArray(exp.subItems)) {
+        exp.subItems.forEach(sub => {
+          addSubItemRow(sub.name || '', sub.price || '', sub.img || '');
+        });
+      }
+
       document.getElementById('exp-submit-btn').innerText = "更新此筆花費";
       document.getElementById('exp-submit-btn').className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold shadow-sm transition";
       document.getElementById('exp-cancel-edit-btn').classList.remove('hidden');
 
-      // 平滑捲動至上方表單方便修改
       document.getElementById('expense-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 
     window.cancelExpenseEdit = () => {
       document.getElementById('expense-form').reset();
       document.getElementById('exp-edit-id').value = '';
+      document.getElementById('sub-items-container').innerHTML = '';
       document.getElementById('exp-submit-btn').innerText = "儲存此筆花費";
       document.getElementById('exp-submit-btn').className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-sm transition";
       document.getElementById('exp-cancel-edit-btn').classList.add('hidden');
@@ -1361,12 +1467,37 @@
                       <div class="flex justify-between items-start gap-2">
                         <div class="space-y-0.5">
                           <h5 class="font-bold text-slate-800 dark:text-slate-100 text-xs">${exp.title}</h5>
-                          ${exp.items ? `<p class="text-[11px] text-slate-500 dark:text-slate-400">🛒 ${exp.items}</p>` : ''}
-                        </div>
-                        <span class="font-black text-indigo-600 dark:text-indigo-400 text-xs font-mono shrink-0">
-                          ¥ ${(exp.amount || 0).toLocaleString()}
-                        </span>
+                                                  ${exp.items ? `<p class="text-[11px] text-slate-500 dark:text-slate-400">📝 ${exp.items}</p>` : ''}
                       </div>
+                      <span class="font-black text-indigo-600 dark:text-indigo-400 text-xs font-mono shrink-0">
+                        ¥ ${(exp.amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <!-- 展示戰利品個別相片與個別價錢 -->
+                    ${(exp.subItems && exp.subItems.length > 0) ? `
+                      <div class="space-y-1.5 bg-white dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                        <div class="text-[10px] font-bold text-slate-400 flex justify-between items-center">
+                          <span>🛍️ 包含細項 (${exp.subItems.length}件):</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                          ${exp.subItems.map((sub, sIdx) => {
+                            const subImgJson = sub.img ? JSON.stringify([sub.img]).replace(/"/g, '&quot;') : '';
+                            return `
+                              <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-700/50 p-1 rounded-md border border-slate-100 dark:border-slate-600">
+                                ${sub.img ? `
+                                  <img src="${sub.img}" onclick="openLightbox(${subImgJson}, 0)" class="w-7 h-7 object-cover rounded cursor-pointer shrink-0 border" alt="單品">
+                                ` : ''}
+                                <div class="min-w-0 flex-1">
+                                  <div class="text-[10px] text-slate-700 dark:text-slate-200 font-medium truncate">${sub.name || '物品'}</div>
+                                  ${sub.price ? `<div class="text-[9px] font-mono font-bold text-indigo-600 dark:text-indigo-400">¥${sub.price.toLocaleString()}</div>` : ''}
+                                </div>
+                              </div>
+                            `;
+                          }).join('')}
+                        </div>
+                      </div>
+                    ` : ''}
 
                       <div class="pt-1.5 border-t border-slate-200/50 dark:border-slate-600/50 flex items-center justify-between text-xs">
                         ${exp.receiptImg ? `
