@@ -2182,76 +2182,54 @@
       }).join('');
     }
 
-    window.setRegion = (r) => { currentRegion = r; renderApp(); };
-    window.setCategory = (c) => { currentCategory = c; renderApp(); };
-
-    onSnapshot(doc(db, "settings", "app_config"), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.regions) regions = data.regions;
-        if (data.categories) categories = data.categories;
-        renderApp();
-        renderModalStationShortcuts();
+        window.setRegion = (r) => {
+      // 1. 切換區域時停止個人 GPS 追蹤，將控制權交還給區域地圖
+      if (window.watchId !== null) {
+        navigator.geolocation.clearWatch(window.watchId);
+        window.watchId = null;
       }
-    });
+      window.isTrackingUser = false;
+      window.isCameraLocked = false;
+      window.isUserLocating = false;
 
-    onSnapshot(doc(db, "settings", "memo"), (docSnap) => {
-      if (docSnap.exists() && document.activeElement !== memoInput) {
-        memoInput.value = docSnap.data().content || '';
-        memoStatus.innerText = '已同步至雲端';
+      const locateBtn = document.querySelector("button[onclick='locateUserPosition()']");
+      if (locateBtn) {
+        locateBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> 定位我';
+        locateBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap";
       }
-    });
 
-    onSnapshot(collection(db, "memo_items"), (snapshot) => {
-      allMemoItems = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      allMemoItems.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+      currentRegion = r;
+      renderApp();
 
-      const container = document.getElementById('memo-items-container');
-      const allMemoImgs = allMemoItems.filter(i => i.type === 'image').map(i => i.imageUrl);
+      // 2. ⭐ 自動平滑跳轉至該區域所有景點的經緯度範圍 ⭐
+      setTimeout(() => {
+        if (!leafletMap) return;
+        leafletMap.invalidateSize();
 
-      container.innerHTML = allMemoItems.map(item => {
-        if (item.type === 'divider') {
-          return `
-            <div class="flex justify-between items-center border-b border-amber-300/80 pt-2 pb-1 my-1">
-              <span class="font-bold text-amber-900 text-xs">--- ${item.title} ---</span>
-              <button onclick="deleteMemoItem('${item.id}')" class="text-slate-400 hover:text-red-500 text-[11px]">✕</button>
-            </div>
-          `;
+        // 篩選出屬於該區域且有座標的地點
+        const targetPlaces = allPlaces.filter(p => {
+          if (!p.lat || !p.lng) return false;
+          if (r === 'all') return true;
+          return p.region === r || (r.includes('/') && p.region && r.split('/').includes(p.region));
+        });
+
+        if (targetPlaces.length > 0) {
+          const regionBounds = targetPlaces.map(p => [p.lat, p.lng]);
+          if (regionBounds.length === 1) {
+            // 如果該區域只有 1 個景點，直接將鏡頭移至該點並適當放大 (Zoom 16)
+            leafletMap.setView(regionBounds[0], 16, { animate: true });
+          } else {
+            // 如果有多個景點，自動縮放到能容納所有景點的完美視野，並預留邊界空間
+            leafletMap.fitBounds(regionBounds, { padding: [40, 40], animate: true, maxZoom: 17 });
+          }
         }
-        const imgIndex = allMemoImgs.indexOf(item.imageUrl);
-        const jsonImgs = JSON.stringify(allMemoImgs).replace(/"/g, '&quot;');
-        return `
-          <div class="relative group inline-block mr-2 mb-2">
-            <img src="${item.imageUrl}" onclick="openLightbox(${jsonImgs}, ${imgIndex})" class="w-20 h-20 object-cover rounded-xl border border-amber-200 cursor-pointer hover:opacity-80 transition shadow-sm">
-            <button onclick="deleteMemoItem('${item.id}')" class="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white rounded-full w-5 h-5 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
-          </div>
-        `;
-      }).join('');
-    });
+      }, 100);
+    };
 
-    onSnapshot(collection(db, "qrcodes"), (snapshot) => {
-      allQRCodes = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      allQRCodes.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-
-      const listEl = document.getElementById('qr-code-list');
-      const allQRImgs = allQRCodes.map(q => q.imageUrl);
-
-      listEl.innerHTML = allQRCodes.map((qr, idx) => {
-        const jsonImgs = JSON.stringify(allQRImgs).replace(/"/g, '&quot;');
-        return `
-          <div class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2.5 overflow-hidden">
-              <img src="${qr.imageUrl}" onclick="openLightbox(${jsonImgs}, ${idx})" class="w-12 h-12 object-cover rounded-lg border cursor-pointer hover:opacity-80 shrink-0">
-              <span class="font-semibold text-slate-800 text-xs truncate">${qr.title}</span>
-            </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              <button onclick="editQRCode('${qr.id}', '${qr.title}')" class="text-slate-400 hover:text-indigo-600 p-1"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
-              <button onclick="deleteQRCode('${qr.id}')" class="text-slate-300 hover:text-red-500 p-1"><i class="fa-solid fa-trash-can text-xs"></i></button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    });
+    window.setCategory = (c) => {
+      currentCategory = c;
+      renderApp();
+    };
 
     onSnapshot(collection(db, "places"), (snapshot) => {
       allPlaces = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
