@@ -1350,39 +1350,76 @@
     });
 
     // 編輯花費時，自動載入收據與所有單品
+        // ⭐ 完美支援舊資料與新資料的編輯花費功能 ⭐
     window.editExpense = (id) => {
       const exp = allExpenses.find(item => item.id === id);
-      if (!exp) return;
+      if (!exp) return alert("找不到此筆花費資料！");
 
-      document.getElementById('exp-edit-id').value = exp.id;
-      document.getElementById('exp-date').value = exp.date || '';
-      document.getElementById('exp-title').value = exp.title || '';
-      document.getElementById('exp-amount').value = exp.amount || '';
-      document.getElementById('exp-items').value = exp.items || '';
+      // 1. 填入主表單欄位
+      const editIdInput = document.getElementById('exp-edit-id');
+      const dateInput = document.getElementById('exp-date');
+      const titleInput = document.getElementById('exp-title');
+      const amountInput = document.getElementById('exp-amount');
+      const itemsInput = document.getElementById('exp-items');
 
-      // 載入細項
-      document.getElementById('sub-items-container').innerHTML = '';
-      if (exp.subItems && Array.isArray(exp.subItems)) {
-        exp.subItems.forEach(sub => {
-          addSubItemRow(sub.name || '', sub.price || '', sub.img || '');
-        });
+      if (editIdInput) editIdInput.value = exp.id || '';
+      if (dateInput) dateInput.value = exp.date || '';
+      if (titleInput) titleInput.value = exp.title || '';
+      if (amountInput) amountInput.value = exp.amount || '';
+      if (itemsInput) itemsInput.value = exp.items || '';
+
+      // 2. 清空並安全重新載入戰利品細項（兼容舊資料）
+      const container = document.getElementById('sub-items-container');
+      if (container) {
+        container.innerHTML = '';
+        if (exp.subItems && Array.isArray(exp.subItems) && exp.subItems.length > 0) {
+          exp.subItems.forEach(sub => {
+            if (typeof window.addSubItemRow === 'function') {
+              window.addSubItemRow(sub.name || '', sub.price || '', sub.img || '');
+            }
+          });
+        }
       }
 
-      document.getElementById('exp-submit-btn').innerText = "更新此筆花費";
-      document.getElementById('exp-submit-btn').className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold shadow-sm transition";
-      document.getElementById('exp-cancel-edit-btn').classList.remove('hidden');
+      // 3. 切換按鈕狀態為「更新模式」
+      const submitBtn = document.getElementById('exp-submit-btn');
+      const cancelBtn = document.getElementById('exp-cancel-edit-btn');
+      if (submitBtn) {
+        submitBtn.innerText = "更新此筆花費";
+        submitBtn.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold shadow-sm transition";
+      }
+      if (cancelBtn) {
+        cancelBtn.classList.remove('hidden');
+      }
 
-      document.getElementById('expense-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // 4. 平滑捲動至頂部表單
+      const formEl = document.getElementById('expense-form');
+      if (formEl) {
+        formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     };
 
     window.cancelExpenseEdit = () => {
-      document.getElementById('expense-form').reset();
-      document.getElementById('exp-edit-id').value = '';
-      document.getElementById('sub-items-container').innerHTML = '';
-      document.getElementById('exp-submit-btn').innerText = "儲存此筆花費";
-      document.getElementById('exp-submit-btn').className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-sm transition";
-      document.getElementById('exp-cancel-edit-btn').classList.add('hidden');
-      document.getElementById('ocr-status').innerText = '';
+      const formEl = document.getElementById('expense-form');
+      if (formEl) formEl.reset();
+      
+      const editIdInput = document.getElementById('exp-edit-id');
+      if (editIdInput) editIdInput.value = '';
+
+      const container = document.getElementById('sub-items-container');
+      if (container) container.innerHTML = '';
+
+      const submitBtn = document.getElementById('exp-submit-btn');
+      if (submitBtn) {
+        submitBtn.innerText = "儲存此筆花費";
+        submitBtn.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-sm transition";
+      }
+
+      const cancelBtn = document.getElementById('exp-cancel-edit-btn');
+      if (cancelBtn) cancelBtn.classList.add('hidden');
+
+      const ocrStatus = document.getElementById('ocr-status');
+      if (ocrStatus) ocrStatus.innerText = '';
     };
 
     window.deleteExpense = async (id) => {
