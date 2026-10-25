@@ -863,8 +863,6 @@
     window.userLocCircle = null;
     window.watchId = null;
     window.isTrackingUser = false;
-    window.isCameraLocked = true; // 是否鎖定鏡頭置中
-
     window.locateUserPosition = () => {
       if (!navigator.geolocation) {
         alert("你的瀏覽器不支援 GPS 定位功能！");
@@ -873,23 +871,11 @@
 
       const locateBtn = document.querySelector("button[onclick='locateUserPosition()']");
 
-      // 情況 A：如果目前已經在追蹤，但之前拖開咗地圖（isCameraLocked === false），撳佢就係「重新置中」
-      if (window.isTrackingUser && !window.isCameraLocked && window.lastUserLat && window.lastUserLng) {
-        window.isCameraLocked = true;
-        if (locateBtn) {
-          locateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 追蹤中...';
-          locateBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap animate-pulse";
-        }
-        leafletMap.setView([window.lastUserLat, window.lastUserLng], leafletMap.getZoom() < 16 ? 16 : leafletMap.getZoom(), { animate: true });
-        return;
-      }
-
-      // 情況 B：如果正在鎖定追蹤中，再次點擊即「停止追蹤」節省電量
+      // 情況 A：如果已經在追蹤中，再次點擊即「停止追蹤」
       if (window.isTrackingUser && window.watchId !== null) {
         navigator.geolocation.clearWatch(window.watchId);
         window.watchId = null;
         window.isTrackingUser = false;
-        window.isCameraLocked = false;
         window.isUserLocating = false;
 
         if (locateBtn) {
@@ -899,10 +885,10 @@
         return;
       }
 
-      // 情況 C：由無到有啟動實時連續追蹤
+      // 情況 B：啟動實時連續追蹤（按下時強制飛去你的位置一次）
       window.isTrackingUser = true;
-      window.isCameraLocked = true;
       window.isUserLocating = true;
+      let hasCenteredOnce = false; // 確保只自動回正一次，絕不反覆拉扯用家畫面！
 
       if (locateBtn) {
         locateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 追蹤中...';
@@ -915,12 +901,9 @@
           const lng = position.coords.longitude;
           const accuracy = position.coords.accuracy || 20;
 
-          window.lastUserLat = lat;
-          window.lastUserLng = lng;
-
           if (!leafletMap) initMap();
 
-          // 1. 更新誤差圈（只更新位置，不搶鏡頭）
+          // 1. 更新誤差圈（只更新位置）
           if (window.userLocCircle) {
             window.userLocCircle.setLatLng([lat, lng]);
             window.userLocCircle.setRadius(accuracy);
@@ -959,15 +942,15 @@
             `);
           }
 
-          // ⭐ 只有在用家「未曾手動拖開地圖」時先會自動置中跟隨；拖開咗就由得用家自由睇，絕不強制回彈！
-          if (window.isCameraLocked) {
+          // ⭐ 關鍵：啟動時只會置中一次！之後就算收到幾百次 GPS 訊號，都唔會再動你個畫面！
+          if (!hasCenteredOnce) {
             leafletMap.setView([lat, lng], leafletMap.getZoom() < 16 ? 16 : leafletMap.getZoom(), { animate: true });
+            hasCenteredOnce = true;
           }
         },
         (error) => {
           console.error("GPS 追蹤錯誤：", error);
           window.isTrackingUser = false;
-          window.isCameraLocked = false;
           window.isUserLocating = false;
           if (locateBtn) {
             locateBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> 定位我';
@@ -2226,10 +2209,53 @@
       }, 100);
     };
 
-    window.setCategory = (c) => {
+        window.setCategory = (c) => {
       currentCategory = c;
       renderApp();
     };
+
+    // ⭐ 補回並修復：分類雲端同步（自動向下相容純文字與物件格式） ⭐
+    onSnapshot(doc(db, "settings", "app_config"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.regions) regions = data.regions;
+        if (data.categories && Array.isArray(data.categories)) {
+          categories = data.categories.map((c, idx) => {
+            if (typeof c === 'string') {
+              const fallback = categoryPalette[idx % categoryPalette.length];
+              return {
+                name: c,
+                icon: fallback.icon || 'fa-tag',
+                hex: fallback.hex || '#4f46e5',
+                color: fallback.color || 'bg-slate-100 text-slate-800 border-slate-300',
+                activeBg: fallback.activeBg || 'bg-slate-800 text-white'
+              };
+            } else if (c && typeof c === 'object') {
+              const fallback = categoryPalette[idx % categoryPalette.length];
+              return {
+                name: c.name || '未命名',
+                icon: c.icon || fallback.icon || 'fa-tag',
+                hex: c.hex || fallback.hex || '#4f46e5',
+                color: c.color || fallback.color || 'bg-slate-100 text-slate-800 border-slate-300',
+                activeBg: c.activeBg || fallback.activeBg || 'bg-slate-800 text-white'
+              };
+            }
+            return c;
+          });
+        }
+        renderApp();
+        renderModalStationShortcuts();
+        populateSelects();
+      }
+    });
+
+    // ⭐ 補回：備忘錄雲端同步 ⭐
+    onSnapshot(doc(db, "settings", "memo"), (docSnap) => {
+      if (docSnap.exists() && document.activeElement !== memoInput) {
+        memoInput.value = docSnap.data().content || '';
+        memoStatus.innerText = '已同步至雲端';
+      }
+    });
 
     onSnapshot(collection(db, "places"), (snapshot) => {
       allPlaces = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
