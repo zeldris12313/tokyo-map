@@ -721,7 +721,7 @@
       });
     }
 
-        function initMap() {
+    function initMap() {
       if (!leafletMap) {
         leafletMap = L.map('map').setView([35.6812, 139.7671], 11);
         L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -730,17 +730,20 @@
           attribution: 'Google Maps'
         }).addTo(leafletMap);
 
-        // ⭐ 當用家手動拖動地圖時，暫停自動回正置中（唔再霸道拉扯畫面）
-        leafletMap.on('dragstart', () => {
-          if (window.isTrackingUser) {
-            window.isCameraLocked = false; // 解除鏡頭跟隨鎖定
+        // ⭐ 只要用家隻手一掂地圖、拖動、滑動或放大縮小，即刻解除鏡頭鎖定！
+        const stopCameraLock = () => {
+          if (window.isTrackingUser && window.isCameraLocked) {
+            window.isCameraLocked = false; // 徹底解除鏡頭綁架
             const locateBtn = document.querySelector("button[onclick='locateUserPosition()']");
             if (locateBtn) {
               locateBtn.innerHTML = '<i class="fa-solid fa-crosshairs"></i> 重回我位置';
               locateBtn.className = "bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap";
             }
           }
-        });
+        };
+
+        // 同時監聽手機拖曳、滑動、手勢縮放、手指觸摸
+        leafletMap.on('dragstart movestart zoomstart touchstart', stopCameraLock);
       }
     }
 
@@ -2101,9 +2104,11 @@
 
       setTimeout(() => {
         leafletMap.invalidateSize();
-        if (bounds.length > 0) leafletMap.fitBounds(bounds, { padding: [30, 30] });
+        // 只有在未開啟追蹤時，先至自動平移景點總覽，唔會再同用家隻手搶鏡頭！
+        if (!window.isTrackingUser && !window.isUserLocating && bounds.length > 0) {
+          leafletMap.fitBounds(bounds, { padding: [30, 30] });
+        }
       }, 200);
-
       // 6. 景點卡片
       document.getElementById('places-grid').innerHTML = filtered.map(item => {
         const catObj = categories.find(c => c.name === item.category) || { color: 'bg-indigo-100 text-indigo-800', icon: 'fa-tag' };
