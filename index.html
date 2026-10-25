@@ -321,7 +321,7 @@
           <button type="button" id="exp-cancel-edit-btn" onclick="cancelExpenseEdit()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 px-3 rounded-xl font-bold transition">
             取消
           </button>
-          <button type="submit" id="exp-submit-btn" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition">
+               <button type="button" id="exp-submit-btn" onclick="handleSaveExpense()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition">
             儲存此筆花費
           </button>
         </div>
@@ -1313,43 +1313,82 @@
       return list;
     }
 
-    // 儲存或更新花費
-    document.getElementById('expense-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const editId = document.getElementById('exp-edit-id').value;
-      const fileInput = document.getElementById('receipt-image-file');
-      let receiptImg = '';
+    // ⭐ 直接點擊觸發的獨立儲存函式（跳過 form 驗證卡死） ⭐
+    window.handleSaveExpense = async () => {
+      const submitBtn = document.getElementById('exp-submit-btn');
+      const originalText = submitBtn ? submitBtn.innerText : '儲存此筆花費';
 
-      if (fileInput.files.length > 0) {
-        receiptImg = await getBase64Image(fileInput.files[0]);
+      // 1. 抓取欄位值
+      const editId = (document.getElementById('exp-edit-id')?.value || '').trim();
+      const dateVal = document.getElementById('exp-date')?.value || new Date().toISOString().split('T')[0];
+      const titleVal = (document.getElementById('exp-title')?.value || '').trim();
+      const amountVal = parseFloat(document.getElementById('exp-amount')?.value) || 0;
+      const itemsVal = (document.getElementById('exp-items')?.value || '').trim();
+
+      // 2. 驗證必填項
+      if (!titleVal) {
+        alert("請輸入店家或品項名稱！");
+        document.getElementById('exp-title')?.focus();
+        return;
+      }
+      if (amountVal <= 0) {
+        alert("請輸入有效的金額（日圓）！");
+        document.getElementById('exp-amount')?.focus();
+        return;
       }
 
-      const subItems = collectSubItemsData();
-
-      const expenseData = {
-        date: document.getElementById('exp-date').value,
-        title: document.getElementById('exp-title').value.trim(),
-        amount: parseFloat(document.getElementById('exp-amount').value) || 0,
-        items: document.getElementById('exp-items').value.trim(),
-        subItems: subItems,
-        updatedAt: new Date()
-      };
-
-      if (receiptImg) {
-        expenseData.receiptImg = receiptImg;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "⏳ 儲存中...";
       }
 
-      if (editId) {
-        await updateDoc(doc(db, "expenses", editId), expenseData);
-        cancelExpenseEdit();
-      } else {
-        expenseData.createdAt = new Date();
-        await addDoc(collection(db, "expenses"), expenseData);
-        cancelExpenseEdit();
-      }
-    });
+      try {
+        // 3. 處理相片
+        const fileInput = document.getElementById('receipt-image-file');
+        let receiptImg = '';
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+          receiptImg = await getBase64Image(fileInput.files[0]);
+        }
 
-    // 編輯花費時，自動載入收據與所有單品
+        // 4. 處理細項
+        const subItems = (typeof collectSubItemsData === 'function') ? collectSubItemsData() : [];
+
+        const expenseData = {
+          date: dateVal,
+          title: titleVal,
+          amount: amountVal,
+          items: itemsVal,
+          subItems: subItems,
+          updatedAt: new Date()
+        };
+
+        if (receiptImg) {
+          expenseData.receiptImg = receiptImg;
+        }
+
+        // 5. 存入 Firestore
+        if (editId) {
+          await updateDoc(doc(db, "expenses", editId), expenseData);
+          alert("✅ 花費記錄已成功更新！");
+        } else {
+          expenseData.createdAt = new Date();
+          await addDoc(collection(db, "expenses"), expenseData);
+          alert("✅ 新花費記錄已成功儲存！");
+        }
+
+        if (typeof cancelExpenseEdit === 'function') {
+          cancelExpenseEdit();
+        }
+      } catch (err) {
+        console.error("儲存花費失敗：", err);
+        alert("❌ 儲存失敗！\n原因：" + (err.message || err));
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = originalText;
+        }
+      }
+    };
         // ⭐ 完美支援舊資料與新資料的編輯花費功能 ⭐
     window.editExpense = (id) => {
       const exp = allExpenses.find(item => item.id === id);
