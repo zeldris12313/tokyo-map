@@ -268,13 +268,13 @@
         <span id="ocr-status" class="text-xs text-indigo-600 font-bold"></span>
       </div>
 
-            <form id="expense-form" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-800">
+      <form id="expense-form" onsubmit="return false;" class="space-y-3 text-xs text-slate-800">
         <input type="hidden" id="exp-edit-id">
 
-        <!-- 📸 上傳收據相片區塊 (修正手機不爆框) -->
-        <div class="md:col-span-3 bg-indigo-50/70 dark:bg-slate-700/50 p-3 rounded-xl border border-indigo-100 dark:border-slate-600 space-y-2">
+        <!-- 1. 上傳收據相片 (選填) -->
+        <div class="bg-indigo-50/70 dark:bg-slate-700/50 p-3 rounded-xl border border-indigo-100 dark:border-slate-600 space-y-2">
           <div class="flex justify-between items-center">
-            <label class="block font-bold text-slate-700 dark:text-slate-200 text-xs">📸 上傳收據相片 (自動偵測金額與店家)</label>
+            <label class="block font-bold text-slate-700 dark:text-slate-200 text-xs">📸 上傳收據相片 (選填)</label>
             <span id="ocr-status" class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold"></span>
           </div>
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -285,63 +285,52 @@
           </div>
         </div>
 
-        <div>
-          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">消費日期 *</label>
-          <input type="date" id="exp-date" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
-        </div>
-
-        <div>
-          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">品項 / 店家名稱 *</label>
-          <input type="text" id="exp-title" placeholder="例如: 7-Eleven / 松本清 / 無印" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
-        </div>
-
-        <div>
-          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">消費日期 *</label>
-          <input type="date" id="exp-date" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
-        </div>
-
-        <div>
-          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">品項 / 店家名稱 *</label>
-          <input type="text" id="exp-title" placeholder="例如: 7-Eleven / 松本清 / 無印" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
-        </div>
-
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <label class="block font-medium text-slate-700 dark:text-slate-300">總金額 (日圓 JPY) *</label>
-            <button type="button" onclick="calcTotalFromSubItems()" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1">
-              <i class="fa-solid fa-calculator"></i> 自動加總細項
-            </button>
+        <!-- 2. 基本資料 (店名/日期/總金額 全部選填) -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div>
+            <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">消費日期</label>
+            <input type="date" id="exp-date" class="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
           </div>
-          <input type="number" id="exp-amount" placeholder="可手動輸入或點自動加總" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-bold bg-white text-slate-800">
+          <div>
+            <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">店家 / 品項名稱 (選填)</label>
+            <input type="text" id="exp-title" placeholder="如不填會自動以戰利品命名" class="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block font-medium text-slate-700 dark:text-slate-300">總金額 JPY (選填)</label>
+              <button type="button" onclick="calcTotalFromSubItems()" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
+                <i class="fa-solid fa-calculator"></i> 加總細項
+              </button>
+            </div>
+            <input type="number" id="exp-amount" placeholder="手入或點加總" class="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-bold bg-white text-slate-800">
+          </div>
         </div>
 
-        <div class="md:col-span-3">
-          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">整體備註 / 簡介 (選填)</label>
-          <input type="text" id="exp-items" placeholder="例如: 涉谷 PARCO 戰利品、便利店宵夜..." class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
-        </div>
-
-        <!-- ⭐ 可選：戰利品個別相片與個別價錢區塊 ⭐ -->
-        <div class="md:col-span-3 bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2.5">
+        <!-- 3. 上傳產品圖 + 個別價錢 (選填，隨意加) -->
+        <div class="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2.5">
           <div class="flex justify-between items-center">
             <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-              <i class="fa-solid fa-tags text-indigo-600"></i> 單品細項記錄 (可再加相片與單獨價錢，選填)
+              <i class="fa-solid fa-bag-shopping text-pink-600"></i> 戰利品產品圖 + 個別價錢 (選填)
             </span>
-            <button type="button" onclick="addSubItemRow()" class="bg-indigo-50 dark:bg-slate-600 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition">
-              <i class="fa-solid fa-plus"></i> + 新增單品
+            <button type="button" onclick="addSubItemRow()" class="bg-pink-50 dark:bg-slate-600 text-pink-700 dark:text-pink-300 hover:bg-pink-100 text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition">
+              <i class="fa-solid fa-plus"></i> + 新增產品
             </button>
           </div>
           
-          <div id="sub-items-container" class="space-y-2">
-            <!-- 動態加入單品列 -->
-          </div>
-          <p class="text-[10px] text-slate-400">💡 提示：如果只影咗成張單，此處留空唔填都完全無問題！</p>
+          <div id="sub-items-container" class="space-y-2"></div>
         </div>
 
-        <div class="flex items-end gap-2">
-          <button type="button" id="exp-cancel-edit-btn" onclick="cancelExpenseEdit()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 px-3 rounded-xl font-bold transition">
+        <!-- 4. 備註 -->
+        <div>
+          <input type="text" id="exp-items" placeholder="備註 (選填，例如：涉谷買的、送朋友...)" class="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
+        </div>
+
+        <!-- 5. 儲存按鈕 -->
+        <div class="flex items-center gap-2 pt-1">
+          <button type="button" id="exp-cancel-edit-btn" onclick="cancelExpenseEdit()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 px-4 rounded-xl font-bold transition">
             取消
           </button>
-               <button type="button" id="exp-submit-btn" onclick="handleSaveExpense()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition">
+          <button type="button" id="exp-submit-btn" onclick="handleSaveExpense()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition">
             儲存此筆花費
           </button>
         </div>
@@ -1333,47 +1322,49 @@
       return list;
     }
 
-    // ⭐ 直接點擊觸發的獨立儲存函式（跳過 form 驗證卡死） ⭐
+    // ⭐ 超寬鬆直存模式：只要有收據、產品圖、價錢或店名任一樣，即刻儲存成功！ ⭐
     window.handleSaveExpense = async () => {
       const submitBtn = document.getElementById('exp-submit-btn');
       const originalText = submitBtn ? submitBtn.innerText : '儲存此筆花費';
 
-      // 1. 安全抓取欄位值
       const editId = (document.getElementById('exp-edit-id')?.value || '').trim();
       const dateVal = document.getElementById('exp-date')?.value || new Date().toISOString().split('T')[0];
-      
-      // 自動容錯：如果有填店名就用店名，如果無填但有填細項單品就用第一個單品名，再無就預設為「一般消費」
       let titleVal = (document.getElementById('exp-title')?.value || '').trim();
-      const subItems = (typeof collectSubItemsData === 'function') ? collectSubItemsData() : [];
-      
-      if (!titleVal) {
-        if (subItems.length > 0 && subItems[0].name) {
-          titleVal = subItems[0].name;
-        } else {
-          titleVal = prompt("請輸入這筆花費的店家或品項名稱（例如：7-Eleven、松本清）：", "一般消費");
-          if (!titleVal || !titleVal.trim()) {
-            titleVal = "一般消費";
-          }
-        }
-        if (document.getElementById('exp-title')) {
-          document.getElementById('exp-title').value = titleVal;
-        }
-      }
-
-      // 檢查金額
       let amountVal = parseFloat(document.getElementById('exp-amount')?.value) || 0;
+      const itemsVal = (document.getElementById('exp-items')?.value || '').trim();
+
+      // 檢查是否有上傳主收據圖
+      const fileInput = document.getElementById('receipt-image-file');
+      const hasReceiptFile = fileInput && fileInput.files && fileInput.files.length > 0;
+
+      // 收集細項（單品圖與個別價錢）
+      const subItems = (typeof collectSubItemsData === 'function') ? collectSubItemsData() : [];
+
+      // 如果總額未填，但細項有入價錢，自動加總
       if (amountVal <= 0 && subItems.length > 0) {
-        calcTotalFromSubItems(false);
-        amountVal = parseFloat(document.getElementById('exp-amount')?.value) || 0;
+        const subSum = subItems.reduce((acc, cur) => acc + (cur.price || 0), 0);
+        if (subSum > 0) amountVal = subSum;
       }
 
-      if (amountVal <= 0) {
-        alert("請輸入有效的花費金額（日圓）！");
-        document.getElementById('exp-amount')?.focus();
+      // ⭐ 核心放行判定：只要以上任何一樣有填（收據、產品、價錢、備註、店名），就全部放行！
+      const hasAnyContent = hasReceiptFile || subItems.length > 0 || amountVal > 0 || titleVal || itemsVal;
+      if (!hasAnyContent) {
+        alert("請至少上傳一張相片、輸入一件產品或輸入金額！");
         return;
       }
 
-      const itemsVal = (document.getElementById('exp-items')?.value || '').trim();
+      // 若未填店名，自動智慧命名，絕不阻擋用家儲存
+      if (!titleVal) {
+        if (subItems.length > 0 && subItems[0].name) {
+          titleVal = subItems[0].name + (subItems.length > 1 ? ` 等${subItems.length}件` : '');
+        } else if (hasReceiptFile) {
+          titleVal = "收據消費";
+        } else if (itemsVal) {
+          titleVal = itemsVal.substring(0, 15);
+        } else {
+          titleVal = "購物花費";
+        }
+      }
 
       if (submitBtn) {
         submitBtn.disabled = true;
@@ -1381,15 +1372,10 @@
       }
 
       try {
-        // 3. 處理相片
-        const fileInput = document.getElementById('receipt-image-file');
         let receiptImg = '';
-        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+        if (hasReceiptFile) {
           receiptImg = await getBase64Image(fileInput.files[0]);
         }
-
-        // 4. 處理細項
-        const subItems = (typeof collectSubItemsData === 'function') ? collectSubItemsData() : [];
 
         const expenseData = {
           date: dateVal,
@@ -1404,22 +1390,21 @@
           expenseData.receiptImg = receiptImg;
         }
 
-        // 5. 存入 Firestore
         if (editId) {
           await updateDoc(doc(db, "expenses", editId), expenseData);
-          alert("✅ 花費記錄已成功更新！");
+          alert("✅ 花費已成功更新！");
         } else {
           expenseData.createdAt = new Date();
           await addDoc(collection(db, "expenses"), expenseData);
-          alert("✅ 新花費記錄已成功儲存！");
+          alert("✅ 花費已成功儲存！");
         }
 
         if (typeof cancelExpenseEdit === 'function') {
           cancelExpenseEdit();
         }
       } catch (err) {
-        console.error("儲存花費失敗：", err);
-        alert("❌ 儲存失敗！\n原因：" + (err.message || err));
+        console.error("儲存失敗原因：", err);
+        alert("❌ 儲存失敗！\n" + (err.message || err));
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
