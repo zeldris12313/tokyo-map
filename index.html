@@ -721,7 +721,7 @@
       });
     }
 
-    function initMap() {
+        function initMap() {
       if (!leafletMap) {
         leafletMap = L.map('map').setView([35.6812, 139.7671], 11);
         L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -729,6 +729,18 @@
           subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
           attribution: 'Google Maps'
         }).addTo(leafletMap);
+
+        // ⭐ 當用家手動拖動地圖時，暫停自動回正置中（唔再霸道拉扯畫面）
+        leafletMap.on('dragstart', () => {
+          if (window.isTrackingUser) {
+            window.isCameraLocked = false; // 解除鏡頭跟隨鎖定
+            const locateBtn = document.querySelector("button[onclick='locateUserPosition()']");
+            if (locateBtn) {
+              locateBtn.innerHTML = '<i class="fa-solid fa-crosshairs"></i> 重回我位置';
+              locateBtn.className = "bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap";
+            }
+          }
+        });
       }
     }
 
@@ -843,11 +855,12 @@
         leafletMap.setView([35.6812, 139.7671], 12, { animate: true });
       }
     };
-        // ⭐ 實時 GPS 動態追蹤（邊行邊跟隨） ⭐
+    // ⭐ 實時 GPS 動態追蹤（自由拖動不回彈版） ⭐
     window.userLocMarker = null;
     window.userLocCircle = null;
-    window.watchId = null; // 記錄持續追蹤的監聽 ID
-    window.isTrackingUser = false; // 是否正在持續追蹤
+    window.watchId = null;
+    window.isTrackingUser = false;
+    window.isCameraLocked = true; // 是否鎖定鏡頭置中
 
     window.locateUserPosition = () => {
       if (!navigator.geolocation) {
@@ -857,11 +870,23 @@
 
       const locateBtn = document.querySelector("button[onclick='locateUserPosition()']");
 
-      // 情況 A：如果已經在追蹤中，再次點擊即「停止追蹤」節省電量
+      // 情況 A：如果目前已經在追蹤，但之前拖開咗地圖（isCameraLocked === false），撳佢就係「重新置中」
+      if (window.isTrackingUser && !window.isCameraLocked && window.lastUserLat && window.lastUserLng) {
+        window.isCameraLocked = true;
+        if (locateBtn) {
+          locateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 追蹤中...';
+          locateBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap animate-pulse";
+        }
+        leafletMap.setView([window.lastUserLat, window.lastUserLng], leafletMap.getZoom() < 16 ? 16 : leafletMap.getZoom(), { animate: true });
+        return;
+      }
+
+      // 情況 B：如果正在鎖定追蹤中，再次點擊即「停止追蹤」節省電量
       if (window.isTrackingUser && window.watchId !== null) {
         navigator.geolocation.clearWatch(window.watchId);
         window.watchId = null;
         window.isTrackingUser = false;
+        window.isCameraLocked = false;
         window.isUserLocating = false;
 
         if (locateBtn) {
@@ -871,8 +896,9 @@
         return;
       }
 
-      // 情況 B：啟動實時連續追蹤
+      // 情況 C：由無到有啟動實時連續追蹤
       window.isTrackingUser = true;
+      window.isCameraLocked = true;
       window.isUserLocating = true;
 
       if (locateBtn) {
@@ -886,9 +912,12 @@
           const lng = position.coords.longitude;
           const accuracy = position.coords.accuracy || 20;
 
+          window.lastUserLat = lat;
+          window.lastUserLng = lng;
+
           if (!leafletMap) initMap();
 
-          // 1. 更新或建立半徑誤差圈
+          // 1. 更新誤差圈（只更新位置，不搶鏡頭）
           if (window.userLocCircle) {
             window.userLocCircle.setLatLng([lat, lng]);
             window.userLocCircle.setRadius(accuracy);
@@ -902,7 +931,7 @@
             }).addTo(leafletMap);
           }
 
-          // 2. 更新或建立動態追蹤藍點
+          // 2. 更新動態藍點
           const userPulseIcon = L.divIcon({
             className: '',
             html: `
@@ -927,14 +956,15 @@
             `);
           }
 
-          // 保持地圖平滑置中跟隨你的腳步
-          if (window.isUserLocating) {
+          // ⭐ 只有在用家「未曾手動拖開地圖」時先會自動置中跟隨；拖開咗就由得用家自由睇，絕不強制回彈！
+          if (window.isCameraLocked) {
             leafletMap.setView([lat, lng], leafletMap.getZoom() < 16 ? 16 : leafletMap.getZoom(), { animate: true });
           }
         },
         (error) => {
           console.error("GPS 追蹤錯誤：", error);
           window.isTrackingUser = false;
+          window.isCameraLocked = false;
           window.isUserLocating = false;
           if (locateBtn) {
             locateBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> 定位我';
@@ -943,9 +973,9 @@
           alert("無法持續取得 GPS 定位，請確認 iPhone 定位權限設定。");
         },
         {
-          enableHighAccuracy: true, // 使用最高精度 GPS
+          enableHighAccuracy: true,
           timeout: 15000,
-          maximumAge: 1000 // 每秒允許讀取最新數據
+          maximumAge: 1000
         }
       );
     };
