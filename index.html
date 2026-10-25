@@ -285,7 +285,17 @@
           </div>
         </div>
 
-                <div>
+        <div>
+          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">消費日期 *</label>
+          <input type="date" id="exp-date" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">品項 / 店家名稱 *</label>
+          <input type="text" id="exp-title" placeholder="例如: 7-Eleven / 松本清 / 無印" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
+        </div>
+
+        <div>
           <div class="flex justify-between items-center mb-1">
             <label class="block font-medium text-slate-700 dark:text-slate-300">總金額 (日圓 JPY) *</label>
             <button type="button" onclick="calcTotalFromSubItems()" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1">
@@ -1318,24 +1328,42 @@
       const submitBtn = document.getElementById('exp-submit-btn');
       const originalText = submitBtn ? submitBtn.innerText : '儲存此筆花費';
 
-      // 1. 抓取欄位值
+      // 1. 安全抓取欄位值
       const editId = (document.getElementById('exp-edit-id')?.value || '').trim();
       const dateVal = document.getElementById('exp-date')?.value || new Date().toISOString().split('T')[0];
-      const titleVal = (document.getElementById('exp-title')?.value || '').trim();
-      const amountVal = parseFloat(document.getElementById('exp-amount')?.value) || 0;
-      const itemsVal = (document.getElementById('exp-items')?.value || '').trim();
-
-      // 2. 驗證必填項
+      
+      // 自動容錯：如果有填店名就用店名，如果無填但有填細項單品就用第一個單品名，再無就預設為「一般消費」
+      let titleVal = (document.getElementById('exp-title')?.value || '').trim();
+      const subItems = (typeof collectSubItemsData === 'function') ? collectSubItemsData() : [];
+      
       if (!titleVal) {
-        alert("請輸入店家或品項名稱！");
-        document.getElementById('exp-title')?.focus();
-        return;
+        if (subItems.length > 0 && subItems[0].name) {
+          titleVal = subItems[0].name;
+        } else {
+          titleVal = prompt("請輸入這筆花費的店家或品項名稱（例如：7-Eleven、松本清）：", "一般消費");
+          if (!titleVal || !titleVal.trim()) {
+            titleVal = "一般消費";
+          }
+        }
+        if (document.getElementById('exp-title')) {
+          document.getElementById('exp-title').value = titleVal;
+        }
       }
+
+      // 檢查金額
+      let amountVal = parseFloat(document.getElementById('exp-amount')?.value) || 0;
+      if (amountVal <= 0 && subItems.length > 0) {
+        calcTotalFromSubItems(false);
+        amountVal = parseFloat(document.getElementById('exp-amount')?.value) || 0;
+      }
+
       if (amountVal <= 0) {
-        alert("請輸入有效的金額（日圓）！");
+        alert("請輸入有效的花費金額（日圓）！");
         document.getElementById('exp-amount')?.focus();
         return;
       }
+
+      const itemsVal = (document.getElementById('exp-items')?.value || '').trim();
 
       if (submitBtn) {
         submitBtn.disabled = true;
