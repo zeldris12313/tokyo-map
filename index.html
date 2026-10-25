@@ -268,42 +268,48 @@
         <span id="ocr-status" class="text-xs text-indigo-600 font-bold"></span>
       </div>
 
-      <form id="expense-form" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-        <div class="md:col-span-3 bg-indigo-50/60 p-4 rounded-xl border border-indigo-100 space-y-2">
+            <form id="expense-form" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-800">
+        <input type="hidden" id="exp-edit-id">
+
+        <!-- 📸 上傳收據相片區塊 (修正手機不爆框) -->
+        <div class="md:col-span-3 bg-indigo-50/70 dark:bg-slate-700/50 p-3 rounded-xl border border-indigo-100 dark:border-slate-600 space-y-2">
           <div class="flex justify-between items-center">
-            <label class="block font-bold text-slate-700 text-xs">📸 上傳收據相片 (自動偵測品項與花費金額)</label>
-            <span class="text-[10px] text-slate-400">支援日文/英文/中文收據辨識</span>
+            <label class="block font-bold text-slate-700 dark:text-slate-200 text-xs">📸 上傳收據相片 (自動偵測金額與店家)</label>
+            <span id="ocr-status" class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold"></span>
           </div>
-          <div class="flex items-center gap-3">
-            <input type="file" id="receipt-image-file" accept="image/*" class="flex-1 p-1 bg-white border border-slate-200 rounded-lg text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white file:text-xs file:font-bold hover:file:bg-indigo-700">
-            <button type="button" onclick="scanReceiptOCR()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-1.5 shrink-0 shadow-sm">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> 掃描辨識收據
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <input type="file" id="receipt-image-file" accept="image/*" class="w-full p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:bg-indigo-600 file:text-white file:text-xs file:font-bold hover:file:bg-indigo-700">
+            <button type="button" onclick="scanReceiptOCR()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 shrink-0 shadow-sm whitespace-nowrap">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 辨識收據
             </button>
           </div>
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">消費日期 *</label>
-          <input type="date" id="exp-date" required class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">消費日期 *</label>
+          <input type="date" id="exp-date" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">品項 / 店家 *</label>
-          <input type="text" id="exp-title" placeholder="例如: 7-Eleven 零食 / 松本清" required class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">品項 / 店家 *</label>
+          <input type="text" id="exp-title" placeholder="例如: 7-Eleven 零食 / 松本清" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
         </div>
 
         <div>
-          <label class="block font-medium text-slate-700 mb-1">金額 (日圓 JPY) *</label>
-          <input type="number" id="exp-amount" placeholder="例如: 1580" required class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-bold">
+          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">金額 (日圓 JPY) *</label>
+          <input type="number" id="exp-amount" placeholder="例如: 1580" required class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-bold bg-white">
         </div>
 
         <div class="md:col-span-2">
-          <label class="block font-medium text-slate-700 mb-1">詳細項目 / 備註</label>
-          <input type="text" id="exp-items" placeholder="例如: 水果軟糖 x2, 綠茶, 飯糰..." class="w-full p-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+          <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">詳細項目 / 備註</label>
+          <input type="text" id="exp-items" placeholder="例如: 水果軟糖 x2, 綠茶, 飯糰..." class="w-full p-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
         </div>
 
-        <div class="flex items-end">
-          <button type="submit" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition">
+        <div class="flex items-end gap-2">
+          <button type="button" id="exp-cancel-edit-btn" onclick="cancelExpenseEdit()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 px-3 rounded-xl font-bold transition">
+            取消
+          </button>
+          <button type="submit" id="exp-submit-btn" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition">
             儲存此筆花費
           </button>
         </div>
@@ -1152,6 +1158,7 @@
     }
 
     // ⭐ Tesseract.js 收據 OCR 自動辨識 ⭐
+    // ⭐ 增強版 OCR：專門匹配日文收據數字結構 ⭐
     window.scanReceiptOCR = async () => {
       const fileInput = document.getElementById('receipt-image-file');
       const statusEl = document.getElementById('ocr-status');
@@ -1160,7 +1167,7 @@
         return alert("請先選取收據相片！");
       }
 
-      statusEl.innerText = "🔍 正在自動辨識收據文字中，請稍候...";
+      statusEl.innerText = "🔍 辨識中...";
       try {
         const file = fileInput.files[0];
         const { data: { text } } = await Tesseract.recognize(file, 'jpn+eng', {
@@ -1171,40 +1178,49 @@
           }
         });
 
-        statusEl.innerText = "✅ 辨識完成！已自動填入";
+        statusEl.innerText = "✅ 辨識完成！";
 
-        const amountRegex = /(?:合計|小計|TOTAL|Total|JPY|¥|税込|支付|金額)[\s:¥]*([0-9,]+)/i;
-        const match = text.match(amountRegex);
+        // 1. 精準抓取日文收據關鍵字後面的金額 (例如：合計 ¥1,280 / 税込 1580 / 預り)
+        const totalRegex = /(?:合計|合\s*計|小計|TOTAL|Total|税込|消費税等|お預り|支払)[\s:¥￥]*([0-9,]+)/i;
+        const match = text.match(totalRegex);
         if (match) {
-          const parsedAmount = match[1].replace(/,/g, '');
-          document.getElementById('exp-amount').value = parsedAmount;
+          const parsed = match[1].replace(/,/g, '');
+          document.getElementById('exp-amount').value = parsed;
         } else {
-          const allNums = text.match(/\b\d{2,6}\b/g);
+          // 若無關鍵字，自動挑選 100~300,000 日圓中最像合計的最大數值
+          const allNums = text.match(/\b\d{3,6}\b/g);
           if (allNums) {
-            const maxVal = Math.max(...allNums.map(n => parseInt(n)).filter(n => n < 500000));
-            if (maxVal > 0) document.getElementById('exp-amount').value = maxVal;
+            const filteredNums = allNums.map(n => parseInt(n)).filter(n => n >= 100 && n <= 300000);
+            if (filteredNums.length > 0) {
+              document.getElementById('exp-amount').value = Math.max(...filteredNums);
+            }
           }
         }
 
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1);
+        // 2. 自動提取店名與品項
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1 && !/^\d+$/.test(l));
         if (lines.length > 0) {
-          document.getElementById('exp-title').value = lines[0].substring(0, 30);
-          document.getElementById('exp-items').value = lines.slice(1, 4).join(', ').substring(0, 80);
+          // 第一行非數字通常是店名
+          document.getElementById('exp-title').value = lines[0].substring(0, 25);
+          // 擷取後續內容作備註
+          if (lines.length > 1) {
+            document.getElementById('exp-items').value = lines.slice(1, 4).join(', ').substring(0, 60);
+          }
         }
 
         if (!document.getElementById('exp-date').value) {
           document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
         }
-
       } catch (err) {
         console.error(err);
-        statusEl.innerText = "⚠ 辨識失敗，請手動輸入金額與品項";
+        statusEl.innerText = "⚠ 辨識未完全，請手動補填";
       }
     };
 
-    // 儲存花費收據
+    // 儲存或更新花費
     document.getElementById('expense-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const editId = document.getElementById('exp-edit-id').value;
       const fileInput = document.getElementById('receipt-image-file');
       let receiptImg = '';
 
@@ -1214,33 +1230,76 @@
 
       const expenseData = {
         date: document.getElementById('exp-date').value,
-        title: document.getElementById('exp-title').value,
+        title: document.getElementById('exp-title').value.trim(),
         amount: parseFloat(document.getElementById('exp-amount').value) || 0,
-        items: document.getElementById('exp-items').value,
-        receiptImg: receiptImg,
-        createdAt: new Date()
+        items: document.getElementById('exp-items').value.trim(),
+        updatedAt: new Date()
       };
 
-      await addDoc(collection(db, "expenses"), expenseData);
+      if (receiptImg) {
+        expenseData.receiptImg = receiptImg;
+      }
 
-      document.getElementById('expense-form').reset();
-      document.getElementById('ocr-status').innerText = '';
-      alert("收據花費已成功儲存！");
+      if (editId) {
+        await updateDoc(doc(db, "expenses", editId), expenseData);
+        cancelExpenseEdit();
+      } else {
+        expenseData.createdAt = new Date();
+        await addDoc(collection(db, "expenses"), expenseData);
+        document.getElementById('expense-form').reset();
+        document.getElementById('ocr-status').innerText = '';
+      }
     });
 
+    // ⭐ 點擊鉛筆進入「編輯花費」模式 ⭐
+    window.editExpense = (id) => {
+      const exp = allExpenses.find(item => item.id === id);
+      if (!exp) return;
+
+      document.getElementById('exp-edit-id').value = exp.id;
+      document.getElementById('exp-date').value = exp.date || '';
+      document.getElementById('exp-title').value = exp.title || '';
+      document.getElementById('exp-amount').value = exp.amount || '';
+      document.getElementById('exp-items').value = exp.items || '';
+
+      document.getElementById('exp-submit-btn').innerText = "更新此筆花費";
+      document.getElementById('exp-submit-btn').className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold shadow-sm transition";
+      document.getElementById('exp-cancel-edit-btn').classList.remove('hidden');
+
+      // 平滑捲動至上方表單方便修改
+      document.getElementById('expense-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    window.cancelExpenseEdit = () => {
+      document.getElementById('expense-form').reset();
+      document.getElementById('exp-edit-id').value = '';
+      document.getElementById('exp-submit-btn').innerText = "儲存此筆花費";
+      document.getElementById('exp-submit-btn').className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-sm transition";
+      document.getElementById('exp-cancel-edit-btn').classList.add('hidden');
+      document.getElementById('ocr-status').innerText = '';
+    };
+
     window.deleteExpense = async (id) => {
-      if (confirm("確定刪除此筆花費與收據嗎？")) {
+      if (confirm("確定刪除此筆花費記錄嗎？")) {
         await deleteDoc(doc(db, "expenses", id));
       }
     };
 
     // ⭐ 核心新功能：依日期「完整包裹分組」渲染收據列表 ⭐
+        // ⭐ 可收合手風琴（Accordion）+ 編輯支援 ⭐
+    let openDateTabs = {}; // 記錄哪一天被點開
+
+    window.toggleDateCollapse = (dateStr) => {
+      openDateTabs[dateStr] = !openDateTabs[dateStr];
+      renderExpensesGroupedByDate();
+    };
+
     function renderExpensesGroupedByDate() {
       const totalJPY = allExpenses.reduce((sum, item) => sum + (item.amount || 0), 0);
       document.getElementById('total-expense-jpy').innerText = `¥ ${totalJPY.toLocaleString()}`;
       document.getElementById('total-receipts-count').innerText = `${allExpenses.length} 筆`;
 
-      // 依日期將項目分組 (Group by date)
+      // 依日期分組
       const groups = {};
       allExpenses.forEach(exp => {
         const d = exp.date || '未設定日期';
@@ -1248,72 +1307,88 @@
         groups[d].push(exp);
       });
 
-      // 日期由早至晚排序
-      const sortedDates = Object.keys(groups).sort((a, b) => new Date(a) - new Date(b));
+      // 日期排序 (最新日子排最前，方便手機即時睇今日開銷)
+      const sortedDates = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
       document.getElementById('days-covered-count').innerText = `${sortedDates.length} 天`;
 
       const container = document.getElementById('expenses-by-date-container');
 
       if (sortedDates.length === 0) {
         container.innerHTML = `
-          <div class="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
+          <div class="text-center py-10 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 text-xs">
             <i class="fa-solid fa-receipt text-3xl mb-2 text-slate-300 block"></i>
-            尚無任何收據記錄，請由上方表單新增或掃描收據！
+            尚無任何收據記錄
           </div>
         `;
         return;
       }
 
+      // 預設展開最新的一天（第一天）
+      if (Object.keys(openDateTabs).length === 0 && sortedDates.length > 0) {
+        openDateTabs[sortedDates[0]] = true;
+      }
+
       container.innerHTML = sortedDates.map((dateStr, idx) => {
         const dayItems = groups[dateStr];
         const dayTotal = dayItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+        const isOpen = !!openDateTabs[dateStr];
 
         return `
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <!-- 日期大標頭 (包裹頂部) -->
-            <div class="bg-indigo-50/80 px-5 py-3 border-b border-indigo-100 flex flex-wrap justify-between items-center gap-2">
-              <div class="flex items-center gap-2.5">
-                <span class="bg-indigo-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
-                  Day ${idx + 1}
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all">
+            <!-- 日期可點擊收合標頭 -->
+            <div onclick="toggleDateCollapse('${dateStr}')" class="bg-indigo-50/70 hover:bg-indigo-100/60 dark:bg-slate-700/60 px-4 py-3 flex justify-between items-center cursor-pointer transition select-none">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-chevron-right text-xs text-indigo-600 dark:text-indigo-400 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}"></i>
+                <span class="bg-indigo-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
+                  Day ${sortedDates.length - idx}
                 </span>
-                <span class="font-bold text-slate-800 text-sm">📅 ${dateStr}</span>
-                <span class="text-xs text-slate-400">(${dayItems.length} 筆消費)</span>
+                <span class="font-bold text-slate-800 dark:text-slate-100 text-xs">📅 ${dateStr}</span>
+                <span class="text-[11px] text-slate-400">(${dayItems.length}筆)</span>
               </div>
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs text-slate-500 font-medium">當日小計：</span>
-                <span class="text-base font-black text-indigo-700 font-mono">¥ ${dayTotal.toLocaleString()}</span>
+              <div class="flex items-center gap-1">
+                <span class="text-[11px] text-slate-400 hidden sm:inline">當日小計:</span>
+                <span class="text-sm font-black text-indigo-700 dark:text-indigo-400 font-mono">¥ ${dayTotal.toLocaleString()}</span>
               </div>
             </div>
 
-            <!-- 當日所有收據子項目清單 -->
-            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-              ${dayItems.map(exp => {
-                const jsonImg = exp.receiptImg ? JSON.stringify([exp.receiptImg]).replace(/"/g, '&quot;') : '';
-                return `
-                  <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex flex-col justify-between hover:bg-slate-100/70 transition space-y-2">
-                    <div class="flex justify-between items-start gap-2">
-                      <div class="space-y-0.5">
-                        <h5 class="font-bold text-slate-800 text-xs">${exp.title}</h5>
-                        ${exp.items ? `<p class="text-[11px] text-slate-500 line-clamp-2">🛒 ${exp.items}</p>` : ''}
+            <!-- 可展開收合的當日細項 (若 isOpen 為 false 則完全隱藏) -->
+            <div class="${isOpen ? 'block' : 'hidden'} p-3 space-y-2 border-t border-slate-100 dark:border-slate-700">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                ${dayItems.map(exp => {
+                  const jsonImg = exp.receiptImg ? JSON.stringify([exp.receiptImg]).replace(/"/g, '&quot;') : '';
+                  return `
+                    <div class="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-3 border border-slate-100 dark:border-slate-600 flex flex-col justify-between space-y-2">
+                      <div class="flex justify-between items-start gap-2">
+                        <div class="space-y-0.5">
+                          <h5 class="font-bold text-slate-800 dark:text-slate-100 text-xs">${exp.title}</h5>
+                          ${exp.items ? `<p class="text-[11px] text-slate-500 dark:text-slate-400">🛒 ${exp.items}</p>` : ''}
+                        </div>
+                        <span class="font-black text-indigo-600 dark:text-indigo-400 text-xs font-mono shrink-0">
+                          ¥ ${(exp.amount || 0).toLocaleString()}
+                        </span>
                       </div>
-                      <span class="font-black text-indigo-600 text-sm font-mono shrink-0">
-                        ¥ ${(exp.amount || 0).toLocaleString()}
-                      </span>
-                    </div>
 
-                    <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
-                      ${exp.receiptImg ? `
-                        <button type="button" onclick="openLightbox(${jsonImg}, 0)" class="text-indigo-600 hover:underline flex items-center gap-1 font-semibold text-[11px]">
-                          <i class="fa-solid fa-receipt"></i> 查看收據相片
-                        </button>
-                      ` : '<span class="text-[11px] text-slate-400">無相片</span>'}
-                      <button onclick="deleteExpense('${exp.id}')" class="text-slate-300 hover:text-red-500 p-1" title="刪除此筆">
-                        <i class="fa-solid fa-trash-can text-xs"></i>
-                      </button>
+                      <div class="pt-1.5 border-t border-slate-200/50 dark:border-slate-600/50 flex items-center justify-between text-xs">
+                        ${exp.receiptImg ? `
+                          <button type="button" onclick="openLightbox(${jsonImg}, 0)" class="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-semibold text-[11px]">
+                            <i class="fa-solid fa-receipt"></i> 查看相片
+                          </button>
+                        ` : '<span class="text-[11px] text-slate-400">無相片</span>'}
+                        
+                        <!-- ✏️ 編輯掣與 🗑️ 刪除掣 -->
+                        <div class="flex items-center gap-2">
+                          <button onclick="editExpense('${exp.id}')" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-1" title="修改這筆消費">
+                            <i class="fa-solid fa-pen-to-square text-xs"></i>
+                          </button>
+                          <button onclick="deleteExpense('${exp.id}')" class="text-slate-300 hover:text-red-500 p-1" title="刪除">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                `;
-              }).join('')}
+                  `;
+                }).join('')}
+              </div>
             </div>
           </div>
         `;
