@@ -650,9 +650,7 @@
   <!-- Firebase SDK & JS Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
     const firebaseConfig = {
       apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
       authDomain: "tokyo-travel-2026-9a82e.firebaseapp.com",
@@ -711,6 +709,7 @@
     let currentLightboxIndex = 0;
 
     // 分頁切換邏輯
+    // 分頁切換邏輯 (語法修復版)
     window.switchMainTab = (tab) => {
       const mapTab = document.getElementById('view-map-tab');
       const expTab = document.getElementById('view-expenses-tab');
@@ -737,13 +736,11 @@
       } else if (tab === 'expenses') {
         expTab.classList.remove('hidden');
         btnExp.className = activeClass;
-        // ⭐ 只有真正切換到記帳分頁時，先動態載入資料！⭐
         if (typeof startExpensesListener === 'function') {
           startExpensesListener();
         } else {
           renderExpensesGroupedByDate();
         }
-      }
       } else if (tab === 'shopping') {
         shopTab.classList.remove('hidden');
         btnShop.className = activeClass;
@@ -2587,41 +2584,6 @@
       if (docSnap.exists() && document.activeElement !== memoInput) {
         memoInput.value = docSnap.data().content || '';
         memoStatus.innerText = '已同步至雲端';
-      }
-    });
-
-    // ⭐ 補回並修復：分類雲端同步（自動向下相容純文字與物件格式） ⭐
-    onSnapshot(doc(db, "settings", "app_config"), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.regions) regions = data.regions;
-        if (data.categories && Array.isArray(data.categories)) {
-          categories = data.categories.map((c, idx) => {
-            if (typeof c === 'string') {
-              const fallback = categoryPalette[idx % categoryPalette.length];
-              return {
-                name: c,
-                icon: fallback.icon || 'fa-tag',
-                hex: fallback.hex || '#4f46e5',
-                color: fallback.color || 'bg-slate-100 text-slate-800 border-slate-300',
-                activeBg: fallback.activeBg || 'bg-slate-800 text-white'
-              };
-            } else if (c && typeof c === 'object') {
-              const fallback = categoryPalette[idx % categoryPalette.length];
-              return {
-                name: c.name || '未命名',
-                icon: c.icon || fallback.icon || 'fa-tag',
-                hex: c.hex || fallback.hex || '#4f46e5',
-                color: c.color || fallback.color || 'bg-slate-100 text-slate-800 border-slate-300',
-                activeBg: c.activeBg || fallback.activeBg || 'bg-slate-800 text-white'
-              };
-            }
-            return c;
-          });
-        }
-        renderApp();
-        renderModalStationShortcuts();
-        populateSelects();
       }
     });
 
