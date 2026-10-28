@@ -650,7 +650,8 @@
   <!-- Firebase SDK & JS Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
@@ -663,7 +664,10 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    // ⭐ 開啟瀏覽器本地快取：資料存入手機本機，第二次打開零延遲秒開！
+    const db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
 
     const defaultRegions = ["東京", "新宿", "澀谷", "淺草/上野", "原宿/表參道", "秋葉原", "池袋", "六本木", "築地/台場"];
     const categoryPalette = [
@@ -2040,7 +2044,7 @@
           const img = new Image();
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const maxDim = 800; // 限制最大邊長為 800px，確保檔案極細
+                        const maxDim = 600; // 手機檢視最合適尺寸 (600px)
             let width = img.width;
             let height = img.height;
             if (width > height && width > maxDim) {
@@ -2054,7 +2058,7 @@
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.7)); // 壓縮為 70% 質素 JPG
+            resolve(canvas.toDataURL('image/jpeg', 0.6)); // 壓縮為 60% 質素，體積少一半以上
           };
           img.src = e.target.result;
         };
@@ -2413,7 +2417,7 @@
           leafletMap.fitBounds(bounds, { padding: [30, 30] });
         }
       }, 200);
-      // 6. 景點卡片
+      // 6. 景點卡片 (加入 Lazy Loading 延遲載入)
       document.getElementById('places-grid').innerHTML = filtered.map(item => {
         const catObj = categories.find(c => c.name === item.category) || { color: 'bg-indigo-100 text-indigo-800', icon: 'fa-tag' };
         const isVisited = item.status === 'visited';
@@ -2425,11 +2429,11 @@
         const allImgsJson = JSON.stringify(allImgs).replace(/"/g, '&quot;');
 
         return `
-          <div id="card-${item.id}" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between transition-all">
+          <div id="card-${item.id}" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col justify-between transition-all">
             <div>
               ${item.imageUrl ? `
-                <div class="relative cursor-pointer group" onclick="openLightbox(${allImgsJson}, 0)">
-                  <img src="${item.imageUrl}" class="w-full h-44 object-cover group-hover:opacity-90 transition" alt="${item.title}">
+                <div class="relative cursor-pointer group bg-slate-100 dark:bg-slate-700 h-44" onclick="openLightbox(${allImgsJson}, 0)">
+                  <img src="${item.imageUrl}" loading="lazy" decoding="async" class="w-full h-44 object-cover group-hover:opacity-90 transition" alt="${item.title}">
                   <span class="absolute bottom-2 right-2 bg-slate-900/70 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-sm">
                     <i class="fa-solid fa-expand"></i> 點擊放大 (${allImgs.length}張)
                   </span>
@@ -2440,19 +2444,19 @@
                 <div class="flex justify-between items-start">
                   <div class="flex flex-wrap items-center gap-1.5">
                     <span class="text-[11px] px-2 py-0.5 rounded-md font-bold ${catObj.color} flex items-center gap-1">${item.category} <i class="fa-solid ${catObj.icon}"></i></span>
-                    <span class="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-100 text-slate-600">${item.region}</span>
+                    <span class="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">${item.region}</span>
                   </div>
-                  <button onclick="toggleCheck('${item.id}', '${item.status}')" class="text-xs font-semibold px-2.5 py-1 rounded-full border transition ${isVisited ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}">
+                  <button onclick="toggleCheck('${item.id}', '${item.status}')" class="text-xs font-semibold px-2.5 py-1 rounded-full border transition ${isVisited ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600'}">
                     <i class="fa-regular ${isVisited ? 'fa-circle-check' : 'fa-circle'}"></i> ${isVisited ? '已打卡' : '未打卡'}
                   </button>
                 </div>
 
-                <h4 class="font-bold text-base text-slate-800">${item.title}</h4>
+                <h4 class="font-bold text-base text-slate-800 dark:text-slate-100">${item.title}</h4>
 
                 ${item.extraImages && item.extraImages.length > 0 ? `
                   <div class="flex items-center gap-2 overflow-x-auto pt-1 pb-1">
                     ${item.extraImages.map((img, idx) => `
-                      <img src="${img}" onclick="openLightbox(${allImgsJson}, ${item.imageUrl ? idx + 1 : idx})" class="w-12 h-12 rounded-lg object-cover cursor-pointer border hover:opacity-80 transition flex-shrink-0">
+                      <img src="${img}" loading="lazy" decoding="async" onclick="openLightbox(${allImgsJson}, ${item.imageUrl ? idx + 1 : idx})" class="w-12 h-12 rounded-lg object-cover cursor-pointer border hover:opacity-80 transition flex-shrink-0">
                     `).join('')}
                   </div>
                 ` : ''}
@@ -2464,19 +2468,19 @@
                 ` : ''}
 
                 ${item.notes ? `
-                  <div class="text-xs text-slate-500 flex items-start gap-1.5">
+                  <div class="text-xs text-slate-500 dark:text-slate-400 flex items-start gap-1.5">
                     <i class="fa-regular fa-file-lines text-slate-400 mt-0.5"></i><span>${item.notes}</span>
                   </div>
                 ` : ''}
               </div>
             </div>
 
-            <div class="p-4 pt-0 flex justify-between items-center text-xs text-slate-500 border-t border-slate-50 pt-3 mt-2">
-              <button onclick="focusOnMap('${item.id}', ${item.lat}, ${item.lng})" class="text-indigo-600 font-medium flex items-center gap-1 hover:underline">
+            <div class="p-4 pt-0 flex justify-between items-center text-xs text-slate-500 border-t border-slate-50 dark:border-slate-700/60 pt-3 mt-2">
+              <button onclick="focusOnMap('${item.id}', ${item.lat}, ${item.lng})" class="text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1 hover:underline">
                 <i class="fa-solid fa-map-pin"></i> 顯示地圖
               </button>
               <div class="flex items-center gap-3">
-                ${item.navLink ? `<a href="${item.navLink}" target="_blank" class="text-slate-600 font-medium hover:text-indigo-600"><i class="fa-solid fa-location-arrow"></i> 導航</a>` : ''}
+                ${item.navLink ? `<a href="${item.navLink}" target="_blank" class="text-slate-600 dark:text-slate-300 font-medium hover:text-indigo-600"><i class="fa-solid fa-location-arrow"></i> 導航</a>` : ''}
                 <button onclick="openEditModal('${item.id}')" class="text-slate-400 hover:text-indigo-600" title="編輯"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button onclick="deletePlace('${item.id}')" class="text-slate-300 hover:text-red-500" title="刪除"><i class="fa-solid fa-trash-can"></i></button>
               </div>
