@@ -195,14 +195,27 @@
       <!-- 4. Google 大地圖總覽區塊 -->
       <div id="map-section" class="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col gap-2">
         
-        <!-- 上排：標題與「定位我」按鈕 (獨立一層) -->
-        <div class="w-full flex justify-between items-center px-1">
-          <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-map text-indigo-600 dark:text-indigo-400"></i> 東京地圖總覽
-          </span>
-          <button type="button" onclick="locateUserPosition()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+        <!-- 上排：標題、同步進度與「定位我」按鈕 -->
+        <div class="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 px-1">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-map text-indigo-600 dark:text-indigo-400"></i> 東京地圖總覽
+            </span>
+            <!-- 實時同步進度徽章 -->
+            <div id="sync-progress-badge" class="hidden items-center gap-1.5 bg-indigo-50 dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-full text-[10px] font-bold">
+              <i class="fa-solid fa-cloud-arrow-down animate-bounce"></i>
+              <span id="sync-progress-text">同步中 0%</span>
+            </div>
+          </div>
+
+          <button type="button" onclick="locateUserPosition()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap self-end sm:self-auto">
             <i class="fa-solid fa-location-crosshairs"></i> 定位我
           </button>
+        </div>
+
+        <!-- 頂部細進度條 (載入完成後會自動隱藏) -->
+        <div id="sync-progress-bar-container" class="w-full bg-slate-100 dark:bg-slate-700 h-1 rounded-full overflow-hidden hidden">
+          <div id="sync-progress-bar" class="bg-indigo-600 h-full w-0 transition-all duration-200"></div>
         </div>
 
         <!-- 下排：100% 滿版闊度地圖 (獨立一層) -->
@@ -2595,9 +2608,52 @@
       }
     });
 
+    // ⭐ 帶有 0% ~ 100% 百分比進度條的雲端載入機制 ⭐
+    let isPlacesLoaded = false;
+
+    function updateSyncProgress(percent, text) {
+      const badge = document.getElementById('sync-progress-badge');
+      const barContainer = document.getElementById('sync-progress-bar-container');
+      const bar = document.getElementById('sync-progress-bar');
+      const txt = document.getElementById('sync-progress-text');
+
+      if (!badge || !barContainer || !bar || !txt) return;
+
+      if (percent >= 100) {
+        txt.innerText = '已同步 100%';
+        bar.style.width = '100%';
+        setTimeout(() => {
+          badge.classList.add('hidden');
+          barContainer.classList.add('hidden');
+        }, 1200); // 載入完成 1 秒後自動優雅隱藏
+      } else {
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+        barContainer.classList.remove('hidden');
+        txt.innerText = text || `同步中 ${percent}%`;
+        bar.style.width = `${percent}%`;
+      }
+    }
+
+    // 初次載入模擬進度 (提升心理等待速度)
+    if (!isPlacesLoaded) {
+      updateSyncProgress(15, "連線雲端中 15%");
+      setTimeout(() => { if (!isPlacesLoaded) updateSyncProgress(40, "讀取景點清單 40%"); }, 300);
+      setTimeout(() => { if (!isPlacesLoaded) updateSyncProgress(70, "解析座標標記 70%"); }, 700);
+    }
+
     onSnapshot(collection(db, "places"), (snapshot) => {
+      const totalDocs = snapshot.docs.length;
+      updateSyncProgress(85, `載入中 85% (${totalDocs}個地點)`);
+
       allPlaces = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      isPlacesLoaded = true;
+
       renderApp();
+      updateSyncProgress(100, `完成 100% (共${totalDocs}個地點)`);
+    }, (error) => {
+      console.error("載入景點出錯：", error);
+      updateSyncProgress(100, "同步受阻 (使用離線快取)");
     });
 
     onSnapshot(collection(db, "flight_hotel"), (snapshot) => {
@@ -2650,7 +2706,6 @@
     let unsubscribeExpenses = null;
 
     window.startExpensesListener = () => {
-      // 如果已經在監聽中，直接渲染
       if (hasLoadedExpenses) {
         renderExpensesGroupedByDate();
         return;
@@ -2659,21 +2714,34 @@
       const container = document.getElementById('expenses-by-date-container');
       if (container && allExpenses.length === 0) {
         container.innerHTML = `
-          <div class="text-center py-10 text-indigo-600 dark:text-indigo-400 text-xs font-bold animate-pulse">
-            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block"></i>
-            正在從雲端載入收據與花費記錄...
+          <div class="text-center py-10 text-indigo-600 dark:text-indigo-400 text-xs font-bold space-y-2">
+            <i class="fa-solid fa-spinner fa-spin text-2xl block"></i>
+            <div id="exp-sync-text">正在從雲端同步收據與花費 (0%)...</div>
+            <div class="w-48 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mx-auto overflow-hidden">
+              <div id="exp-sync-bar" class="bg-indigo-600 h-full w-1/4 transition-all duration-300"></div>
+            </div>
           </div>
         `;
       }
 
-      // 開始向 Firebase 索取收據資料
+      setTimeout(() => {
+        const bar = document.getElementById('exp-sync-bar');
+        const txt = document.getElementById('exp-sync-text');
+        if (bar && txt) { bar.style.width = '60%'; txt.innerText = '正在下載收據圖片與明細 (60%)...'; }
+      }, 400);
+
       unsubscribeExpenses = onSnapshot(collection(db, "expenses"), (snapshot) => {
+        const bar = document.getElementById('exp-sync-bar');
+        const txt = document.getElementById('exp-sync-text');
+        if (bar && txt) { bar.style.width = '100%'; txt.innerText = '載入完成 100%！'; }
+
         allExpenses = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
         hasLoadedExpenses = true;
-        renderExpensesGroupedByDate();
+        setTimeout(() => {
+          renderExpensesGroupedByDate();
+        }, 200);
       });
     };
-
     // ===== 想買相簿 (Wishlist) 邏輯 =====
     window.addShoppingItem = async () => {
       const fileInput = document.getElementById('shop-img-file');
