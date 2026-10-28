@@ -737,7 +737,13 @@
       } else if (tab === 'expenses') {
         expTab.classList.remove('hidden');
         btnExp.className = activeClass;
-        renderExpensesGroupedByDate();
+        // ⭐ 只有真正切換到記帳分頁時，先動態載入資料！⭐
+        if (typeof startExpensesListener === 'function') {
+          startExpensesListener();
+        } else {
+          renderExpensesGroupedByDate();
+        }
+      }
       } else if (tab === 'shopping') {
         shopTab.classList.remove('hidden');
         btnShop.className = activeClass;
@@ -2677,11 +2683,34 @@
       initTodoSortable();
     });
 
-    // 監聽收據集合並依日期包裹
-    onSnapshot(collection(db, "expenses"), (snapshot) => {
-      allExpenses = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      renderExpensesGroupedByDate();
-    });
+    // ⭐ 方案 B 核心：改為按需延遲載入 (Lazy Load)，開 App 不再被收據圖片拖慢 ⭐
+    let hasLoadedExpenses = false;
+    let unsubscribeExpenses = null;
+
+    window.startExpensesListener = () => {
+      // 如果已經在監聽中，直接渲染
+      if (hasLoadedExpenses) {
+        renderExpensesGroupedByDate();
+        return;
+      }
+
+      const container = document.getElementById('expenses-by-date-container');
+      if (container && allExpenses.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 text-indigo-600 dark:text-indigo-400 text-xs font-bold animate-pulse">
+            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block"></i>
+            正在從雲端載入收據與花費記錄...
+          </div>
+        `;
+      }
+
+      // 開始向 Firebase 索取收據資料
+      unsubscribeExpenses = onSnapshot(collection(db, "expenses"), (snapshot) => {
+        allExpenses = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+        hasLoadedExpenses = true;
+        renderExpensesGroupedByDate();
+      });
+    };
 
     // ===== 想買相簿 (Wishlist) 邏輯 =====
     window.addShoppingItem = async () => {
