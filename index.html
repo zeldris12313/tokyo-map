@@ -2638,14 +2638,6 @@
       }
     });
 
-    // ⭐ 補回：備忘錄雲端同步 ⭐
-    onSnapshot(doc(db, "settings", "memo"), (docSnap) => {
-      if (docSnap.exists() && document.activeElement !== memoInput) {
-        memoInput.value = docSnap.data().content || '';
-        memoStatus.innerText = '已同步至雲端';
-      }
-    });
-
     // ⭐ 帶有 0% ~ 100% 百分比進度條的雲端載入機制 ⭐
     let isPlacesLoaded = false;
 
@@ -2893,9 +2885,32 @@
     });
 
     // ===== 🌙 / ☀️ 深色模式切換邏輯 =====
-    window.toggleDarkMode = () => {
+        window.toggleDarkMode = () => {
       const isDark = document.documentElement.classList.toggle('dark');
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeIcon(isDark);
+    };
+
+    function updateThemeIcon(isDark) {
+      const icon = document.getElementById('theme-icon');
+      if (!icon) return;
+      if (isDark) {
+        icon.className = 'fa-solid fa-sun text-amber-400';
+      } else {
+        icon.className = 'fa-solid fa-moon text-yellow-300';
+      }
+    }
+
+    // 頁面初次載入時自動讀取用戶深色模式喜好
+    (function initTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
       updateThemeIcon(isDark);
     })();
 
