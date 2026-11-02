@@ -660,6 +660,12 @@
     </div>
   </div>
 
+  <!-- ⭐ 離線狀態提示橫幅 (斷網時自動滑出，連線自動隱藏) ⭐ -->
+  <div id="offline-toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-amber-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-4">
+    <i class="fa-solid fa-wifi text-sm animate-pulse"></i>
+    <span>離線模式：資料由本機讀取，連線後自動同步</span>
+  </div>
+
   <!-- Firebase SDK & JS Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -2859,30 +2865,60 @@
       const isDark = document.documentElement.classList.toggle('dark');
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
       updateThemeIcon(isDark);
-    };
+    })();
 
-    function updateThemeIcon(isDark) {
-      const icon = document.getElementById('theme-icon');
-      if (!icon) return;
-      if (isDark) {
-        icon.className = 'fa-solid fa-sun text-amber-400';
+    // ===== ⭐ 離線引擎：Service Worker 快取核心資源 + 網絡監聽 ⭐ =====
+    // 1. 網絡狀態變化監聽 (提示橫幅)
+    const toast = document.getElementById('offline-toast');
+    function updateNetworkStatus() {
+      if (!navigator.onLine) {
+        if (toast) {
+          toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+          toast.classList.add('opacity-100', 'translate-y-0');
+        }
       } else {
-        icon.className = 'fa-solid fa-moon text-yellow-300';
+        if (toast) {
+          toast.classList.remove('opacity-100', 'translate-y-0');
+          toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+        }
       }
     }
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    updateNetworkStatus();
 
-    // 頁面初次載入時自動讀取用戶喜好
-    (function initTheme() {
-      const savedTheme = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      updateThemeIcon(isDark);
-    })();
+    // 2. 自動註冊 Service Worker 離線快取引擎 (免額外 sw.js 檔案，直接在線註冊)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swScript = `
+          const CACHE_NAME = 'tokyo-app-v2';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            // 對靜態資源與 CDN 實施「優先網絡，失敗即取快取」策略
+            if (e.request.method === 'GET' && !e.request.url.includes('firestore.googleapis.com')) {
+              e.respondWith(
+                fetch(e.request)
+                  .then((res) => {
+                    const resClone = res.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
+                    return res;
+                  })
+                  .catch(() => caches.match(e.request))
+              );
+            }
+          });
+        `;
+        const blob = new Blob([swScript], { type: 'application/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(blob))
+          .then(() => console.log("離線快取引擎已就緒！"))
+          .catch(err => console.log("SW 註冊忽略：", err));
+      });
+    }
   </script>
 </body>
 </html>
