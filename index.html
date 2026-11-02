@@ -243,13 +243,26 @@
   <div id="view-expenses-tab" class="max-w-5xl mx-auto p-6 space-y-6 hidden">
     <!-- 頂部概覽卡片 -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
-        <div>
-          <span class="text-xs text-slate-400 font-bold block">總支出 (日圓 JPY)</span>
-          <span id="total-expense-jpy" class="text-2xl font-black text-indigo-600">¥ 0</span>
+      <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col justify-between gap-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-xs text-slate-400 font-bold block">總支出 (日圓 JPY)</span>
+            <div id="total-expense-jpy" class="text-2xl font-black text-indigo-600 dark:text-indigo-400">¥ 0</div>
+          </div>
+          <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-slate-700 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-lg">
+            <i class="fa-solid fa-yen-sign"></i>
+          </div>
         </div>
-        <div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-lg">
-          <i class="fa-solid fa-yen-sign"></i>
+
+        <!-- ⭐ 自訂日圓換港幣匯率輸入框 ⭐ -->
+        <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs">
+          <span class="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
+            <i class="fa-solid fa-arrow-right-arrow-left text-[11px] text-indigo-600 dark:text-indigo-400"></i> 匯率 (JPY ➔ HKD):
+          </span>
+          <div class="flex items-center gap-1">
+            <span class="text-slate-400 font-mono text-[11px]">x</span>
+            <input type="number" id="custom-exchange-rate" step="0.001" min="0.01" max="0.2" value="0.049" oninput="updateExchangeRate(this.value)" class="w-16 p-1 text-center bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 outline-none focus:ring-1 focus:ring-indigo-500" title="輸入匯率，例如 0.049 代表 100 日圓 = 4.9 港幣">
+          </div>
         </div>
       </div>
       <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
@@ -1525,9 +1538,28 @@
       renderExpensesGroupedByDate();
     };
 
+        // ⭐ 動態匯率變數（預設 0.049，支援自動讀取本機快取） ⭐
+    window.currentExchangeRate = parseFloat(localStorage.getItem('tokyo_exchange_rate')) || 0.049;
+
+    // 當用家喺輸入框改匯率時，即時儲存並重新渲染所有金額
+    window.updateExchangeRate = (val) => {
+      const parsed = parseFloat(val);
+      if (!isNaN(parsed) && parsed > 0) {
+        window.currentExchangeRate = parsed;
+        localStorage.setItem('tokyo_exchange_rate', parsed);
+        renderExpensesGroupedByDate();
+      }
+    };
+
     function renderExpensesGroupedByDate() {
-      // 匯率：100 日圓 = 4.9 港幣 (JPY * 0.049)
-      const toHKD = (jpy) => Math.round((jpy || 0) * 0.049).toLocaleString();
+      // 確保輸入框顯示當前生效的匯率
+      const rateInput = document.getElementById('custom-exchange-rate');
+      if (rateInput && document.activeElement !== rateInput) {
+        rateInput.value = window.currentExchangeRate;
+      }
+
+      // 動態換算港幣公式：JPY * 當前匯率
+      const toHKD = (jpy) => Math.round((jpy || 0) * window.currentExchangeRate).toLocaleString();
 
       const totalJPY = allExpenses.reduce((sum, item) => sum + (item.amount || 0), 0);
       document.getElementById('total-expense-jpy').innerHTML = `
