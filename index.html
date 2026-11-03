@@ -1530,6 +1530,28 @@
       if (ocrStatus) ocrStatus.innerText = '';
     };
 
+    // ⭐ 歷史單品：直接在卡片上點擊按鈕切換「手信」狀態（免開表單編輯） ⭐
+    window.toggleSubItemGift = async (expenseId, subIndex) => {
+      const exp = allExpenses.find(item => item.id === expenseId);
+      if (!exp || !exp.subItems || !exp.subItems[subIndex]) return;
+
+      // 切換手信布林值
+      exp.subItems[subIndex].isGift = !exp.subItems[subIndex].isGift;
+
+      // 1. 本地即時重新渲染畫面（0秒反應）
+      renderExpensesGroupedByDate();
+
+      // 2. 背景自動同步更新至 Firestore 雲端
+      try {
+        await updateDoc(doc(db, "expenses", expenseId), {
+          subItems: exp.subItems,
+          updatedAt: new Date()
+        });
+      } catch (err) {
+        console.error("更新手信狀態失敗：", err);
+      }
+    };
+
     window.deleteExpense = async (id) => {
       if (confirm("確定刪除此筆花費記錄嗎？")) {
         await deleteDoc(doc(db, "expenses", id));
@@ -1667,24 +1689,27 @@
                               ` : ''}
                             </div>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                              ${exp.subItems.map((sub) => {
+                                                            ${exp.subItems.map((sub, sIdx) => {
                                 const subImgJson = sub.img ? JSON.stringify([sub.img]).replace(/"/g, '&quot;') : '';
                                 return `
-                                  <div class="flex items-center gap-1.5 p-1 rounded-md border ${sub.isGift ? 'bg-pink-50/70 border-pink-200 dark:bg-pink-950/30 dark:border-pink-800' : 'bg-slate-50 border-slate-100 dark:bg-slate-700/50 dark:border-slate-600'}">
+                                  <div class="flex items-center gap-1.5 p-1.5 rounded-lg border transition ${sub.isGift ? 'bg-pink-50/80 border-pink-300 dark:bg-pink-950/40 dark:border-pink-800' : 'bg-slate-50 border-slate-100 dark:bg-slate-700/50 dark:border-slate-600'}">
                                     ${sub.img ? `
-                                      <img src="${sub.img}" onclick="openLightbox(${subImgJson}, 0)" class="w-7 h-7 object-cover rounded cursor-pointer shrink-0 border" alt="單品">
+                                      <img src="${sub.img}" onclick="openLightbox(${subImgJson}, 0)" class="w-8 h-8 object-cover rounded cursor-pointer shrink-0 border" alt="單品">
                                     ` : ''}
                                     <div class="min-w-0 flex-1">
-                                      <div class="text-[10px] text-slate-700 dark:text-slate-200 font-medium truncate flex items-center gap-1">
-                                        <span>${sub.name || '物品'}</span>
-                                        ${sub.isGift ? '<span class="text-[9px] bg-pink-600 text-white px-1 rounded-sm shrink-0 font-bold">手信</span>' : ''}
-                                      </div>
+                                      <div class="text-[11px] text-slate-700 dark:text-slate-200 font-medium truncate">${sub.name || '物品'}</div>
                                       ${sub.price ? `
                                         <div class="text-[9px] font-mono font-bold ${sub.isGift ? 'text-pink-600 dark:text-pink-400' : 'text-indigo-600 dark:text-indigo-400'}">
                                           ¥${sub.price.toLocaleString()} <span class="font-normal text-slate-400">($${toHKD(sub.price)})</span>
                                         </div>
                                       ` : ''}
                                     </div>
+
+                                    <!-- ⭐ 直接點擊切換手信按鈕 ⭐ -->
+                                    <button type="button" onclick="toggleSubItemGift('${exp.id}', ${sIdx})" class="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 transition flex items-center gap-0.5 ${sub.isGift ? 'bg-pink-600 text-white shadow-sm' : 'bg-slate-200/80 text-slate-500 hover:bg-pink-100 hover:text-pink-600 dark:bg-slate-600 dark:text-slate-300'}" title="點擊切換手信狀態">
+                                      <span>🎁</span>
+                                      <span>${sub.isGift ? '手信' : '+手信'}</span>
+                                    </button>
                                   </div>
                                 `;
                               }).join('')}
