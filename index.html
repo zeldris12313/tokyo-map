@@ -1282,7 +1282,8 @@
     let currentSubItems = [];
 
     // 新增單品輸入行
-    window.addSubItemRow = (name = '', price = '', img = '') => {
+    // 新增單品輸入行（支援手信/代購勾選）
+    window.addSubItemRow = (name = '', price = '', img = '', isGift = false) => {
       const container = document.getElementById('sub-items-container');
       const rowId = 'sub-row-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
       
@@ -1296,11 +1297,16 @@
           <input type="file" accept="image/*" onchange="previewSubItemImage(event, '${rowId}')" class="absolute inset-0 opacity-0 cursor-pointer text-[0px]" title="上傳物品相片">
           <input type="hidden" class="sub-img-data" value="${img || ''}">
         </div>
-        <input type="text" placeholder="品名 (例: 盲盒/防曬)" value="${name}" class="sub-item-name flex-1 min-w-[110px] p-1.5 border border-slate-200 dark:border-slate-600 rounded-lg outline-none bg-transparent">
+        <input type="text" placeholder="品名 (例: 盲盒/防曬)" value="${name}" class="sub-item-name flex-1 min-w-[100px] p-1.5 border border-slate-200 dark:border-slate-600 rounded-lg outline-none bg-transparent">
         <div class="flex items-center gap-1 shrink-0">
           <span class="text-slate-400 font-mono">¥</span>
-          <input type="number" placeholder="金額" value="${price}" oninput="calcTotalFromSubItems(false)" class="sub-item-price w-20 p-1.5 border border-slate-200 dark:border-slate-600 rounded-lg outline-none font-mono font-bold bg-transparent">
+          <input type="number" placeholder="金額" value="${price}" oninput="calcTotalFromSubItems(false)" class="sub-item-price w-16 p-1.5 border border-slate-200 dark:border-slate-600 rounded-lg outline-none font-mono font-bold bg-transparent">
         </div>
+        <!-- 🎁 手信勾選格 -->
+        <label class="flex items-center gap-1 cursor-pointer select-none bg-amber-50 dark:bg-slate-700/60 px-2 py-1 rounded-lg border border-amber-200 dark:border-slate-600 text-[11px] font-bold text-amber-700 dark:text-amber-400 shrink-0" title="勾選代表幫人買的手信代購">
+          <input type="checkbox" class="sub-item-gift rounded text-pink-600 focus:ring-pink-500" ${isGift ? 'checked' : ''}>
+          <span>手信</span>
+        </label>
         <button type="button" onclick="removeSubItemRow('${rowId}')" class="text-slate-400 hover:text-red-500 p-1 shrink-0">
           <i class="fa-solid fa-xmark"></i>
         </button>
@@ -1353,9 +1359,10 @@
       rows.forEach(r => {
         const name = r.querySelector('.sub-item-name')?.value.trim() || '';
         const price = parseFloat(r.querySelector('.sub-item-price')?.value) || 0;
-        const img = r.querySelector('.sub-img-data')?.value || '';
+                const img = r.querySelector('.sub-img-data')?.value || '';
+        const isGift = r.querySelector('.sub-item-gift')?.checked || false;
         if (name || price > 0 || img) {
-          list.push({ name, price, img });
+          list.push({ name, price, img, isGift });
         }
       });
       return list;
@@ -1476,7 +1483,7 @@
         if (exp.subItems && Array.isArray(exp.subItems) && exp.subItems.length > 0) {
           exp.subItems.forEach(sub => {
             if (typeof window.addSubItemRow === 'function') {
-              window.addSubItemRow(sub.name || '', sub.price || '', sub.img || '');
+              window.addSubItemRow(sub.name || '', sub.price || '', sub.img || '', !!sub.isGift);
             }
           });
         }
@@ -1643,34 +1650,48 @@
                         </div>
                       </div>
 
-                      <!-- 展示戰利品個別相片與個別價錢 (含港幣換算) -->
-                      ${(exp.subItems && exp.subItems.length > 0) ? `
-                        <div class="space-y-1.5 bg-white dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
-                          <div class="text-[10px] font-bold text-slate-400 flex justify-between items-center">
-                            <span>🛍️ 包含細項 (${exp.subItems.length}件):</span>
-                          </div>
-                          <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                            ${exp.subItems.map((sub) => {
-                              const subImgJson = sub.img ? JSON.stringify([sub.img]).replace(/"/g, '&quot;') : '';
-                              return `
-                                <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-700/50 p-1 rounded-md border border-slate-100 dark:border-slate-600">
-                                  ${sub.img ? `
-                                    <img src="${sub.img}" onclick="openLightbox(${subImgJson}, 0)" class="w-7 h-7 object-cover rounded cursor-pointer shrink-0 border" alt="單品">
-                                  ` : ''}
-                                  <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] text-slate-700 dark:text-slate-200 font-medium truncate">${sub.name || '物品'}</div>
-                                    ${sub.price ? `
-                                      <div class="text-[9px] font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                                        ¥${sub.price.toLocaleString()} <span class="font-normal text-slate-400">($${toHKD(sub.price)})</span>
-                                      </div>
+                                     <!-- 展示戰利品個別相片與個別價錢 (含手信統計與港幣換算) -->
+                      ${(exp.subItems && exp.subItems.length > 0) ? (() => {
+                        // 計算這張單入面所有手信的總金額
+                        const giftTotal = exp.subItems.filter(s => s.isGift).reduce((sum, s) => sum + (s.price || 0), 0);
+                        const giftCount = exp.subItems.filter(s => s.isGift).length;
+
+                        return `
+                          <div class="space-y-1.5 bg-white dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                            <div class="text-[10px] font-bold text-slate-400 flex flex-wrap justify-between items-center gap-1">
+                              <span>🛍️ 包含細項 (${exp.subItems.length}件):</span>
+                              ${giftCount > 0 ? `
+                                <span class="text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/60 px-2 py-0.5 rounded-md font-bold">
+                                  🎁 手信共${giftCount}件：¥${giftTotal.toLocaleString()} (約 $${toHKD(giftTotal)} HKD)
+                                </span>
+                              ` : ''}
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                              ${exp.subItems.map((sub) => {
+                                const subImgJson = sub.img ? JSON.stringify([sub.img]).replace(/"/g, '&quot;') : '';
+                                return `
+                                  <div class="flex items-center gap-1.5 p-1 rounded-md border ${sub.isGift ? 'bg-pink-50/70 border-pink-200 dark:bg-pink-950/30 dark:border-pink-800' : 'bg-slate-50 border-slate-100 dark:bg-slate-700/50 dark:border-slate-600'}">
+                                    ${sub.img ? `
+                                      <img src="${sub.img}" onclick="openLightbox(${subImgJson}, 0)" class="w-7 h-7 object-cover rounded cursor-pointer shrink-0 border" alt="單品">
                                     ` : ''}
+                                    <div class="min-w-0 flex-1">
+                                      <div class="text-[10px] text-slate-700 dark:text-slate-200 font-medium truncate flex items-center gap-1">
+                                        <span>${sub.name || '物品'}</span>
+                                        ${sub.isGift ? '<span class="text-[9px] bg-pink-600 text-white px-1 rounded-sm shrink-0 font-bold">手信</span>' : ''}
+                                      </div>
+                                      ${sub.price ? `
+                                        <div class="text-[9px] font-mono font-bold ${sub.isGift ? 'text-pink-600 dark:text-pink-400' : 'text-indigo-600 dark:text-indigo-400'}">
+                                          ¥${sub.price.toLocaleString()} <span class="font-normal text-slate-400">($${toHKD(sub.price)})</span>
+                                        </div>
+                                      ` : ''}
+                                    </div>
                                   </div>
-                                </div>
-                              `;
-                            }).join('')}
+                                `;
+                              }).join('')}
+                            </div>
                           </div>
-                        </div>
-                      ` : ''}
+                        `;
+                      })() : ''}
 
                       <div class="pt-1.5 border-t border-slate-200/50 dark:border-slate-600/50 flex items-center justify-between text-xs">
                         ${exp.receiptImg ? `
