@@ -1590,14 +1590,37 @@
       // 動態換算港幣公式：JPY * 當前匯率
       const toHKD = (jpy) => Math.round((jpy || 0) * window.currentExchangeRate).toLocaleString();
 
+      // 1. 計算全旅程總支出與全部手信代購總計
       const totalJPY = allExpenses.reduce((sum, item) => sum + (item.amount || 0), 0);
+      let grandGiftTotal = 0;
+      let grandGiftCount = 0;
+      allExpenses.forEach(exp => {
+        if (exp.subItems && Array.isArray(exp.subItems)) {
+          exp.subItems.forEach(s => {
+            if (s.isGift) {
+              grandGiftTotal += (s.price || 0);
+              grandGiftCount++;
+            }
+          });
+        }
+      });
+
+      // 頂部總支出卡片（同時顯示日圓、港幣與手信代購總額）
       document.getElementById('total-expense-jpy').innerHTML = `
-        <span>¥ ${totalJPY.toLocaleString()}</span>
-        <span class="text-xs font-normal text-slate-400 block sm:inline sm:ml-1">(約 $${toHKD(totalJPY)} HKD)</span>
+        <div class="flex items-baseline gap-1.5 flex-wrap">
+          <span>¥ ${totalJPY.toLocaleString()}</span>
+          <span class="text-xs font-normal text-slate-400">(約 $${toHKD(totalJPY)} HKD)</span>
+        </div>
+        ${grandGiftTotal > 0 ? `
+          <div class="mt-1 text-xs font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/60 px-2.5 py-1 rounded-lg flex items-center gap-1.5 w-fit">
+            <span>🎁</span>
+            <span>手信代購共 ${grandGiftCount} 件：¥ ${grandGiftTotal.toLocaleString()} (約 $${toHKD(grandGiftTotal)} HKD)</span>
+          </div>
+        ` : ''}
       `;
       document.getElementById('total-receipts-count').innerText = `${allExpenses.length} 筆`;
 
-      // 依日期分組
+      // 2. 依日期分組
       const groups = {};
       allExpenses.forEach(exp => {
         const d = exp.date || '未設定日期';
@@ -1631,9 +1654,23 @@
         const dayTotal = dayItems.reduce((sum, item) => sum + (item.amount || 0), 0);
         const isOpen = !!openDateTabs[dateStr];
 
+        // 計算當日的手信總額與件數
+        let dayGiftTotal = 0;
+        let dayGiftCount = 0;
+        dayItems.forEach(exp => {
+          if (exp.subItems && Array.isArray(exp.subItems)) {
+            exp.subItems.forEach(s => {
+              if (s.isGift) {
+                dayGiftTotal += (s.price || 0);
+                dayGiftCount++;
+              }
+            });
+          }
+        });
+
         return `
           <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all">
-            <!-- 日期可點擊收合標頭 -->
+            <!-- 日期可點擊收合標頭 (含當日總額與當日手信統計) -->
             <div onclick="toggleDateCollapse('${dateStr}')" class="bg-indigo-50/70 hover:bg-indigo-100/60 dark:bg-slate-700/60 px-4 py-3 flex justify-between items-center cursor-pointer transition select-none">
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-chevron-right text-xs text-indigo-600 dark:text-indigo-400 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}"></i>
@@ -1646,6 +1683,13 @@
               <div class="text-right">
                 <span class="text-sm font-black text-indigo-700 dark:text-indigo-400 font-mono">¥ ${dayTotal.toLocaleString()}</span>
                 <span class="text-[10px] text-slate-500 dark:text-slate-400 font-normal block sm:inline sm:ml-1">(約 $${toHKD(dayTotal)} HKD)</span>
+                <!-- 當日手信統計標籤 -->
+                ${dayGiftTotal > 0 ? `
+                  <div class="text-[10px] text-pink-600 dark:text-pink-400 font-bold flex items-center justify-end gap-1 mt-0.5">
+                    <span>🎁 手信(${dayGiftCount}):</span>
+                    <span>¥${dayGiftTotal.toLocaleString()} ($${toHKD(dayGiftTotal)})</span>
+                  </div>
+                ` : ''}
               </div>
             </div>
 
@@ -1672,24 +1716,23 @@
                         </div>
                       </div>
 
-                                     <!-- 展示戰利品個別相片與個別價錢 (含手信統計與港幣換算) -->
+                      <!-- 展示戰利品個別相片與個別價錢 (含單張單的手信統計) -->
                       ${(exp.subItems && exp.subItems.length > 0) ? (() => {
-                        // 計算這張單入面所有手信的總金額
-                        const giftTotal = exp.subItems.filter(s => s.isGift).reduce((sum, s) => sum + (s.price || 0), 0);
-                        const giftCount = exp.subItems.filter(s => s.isGift).length;
+                        const billGiftTotal = exp.subItems.filter(s => s.isGift).reduce((sum, s) => sum + (s.price || 0), 0);
+                        const billGiftCount = exp.subItems.filter(s => s.isGift).length;
 
                         return `
                           <div class="space-y-1.5 bg-white dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
                             <div class="text-[10px] font-bold text-slate-400 flex flex-wrap justify-between items-center gap-1">
                               <span>🛍️ 包含細項 (${exp.subItems.length}件):</span>
-                              ${giftCount > 0 ? `
+                              ${billGiftCount > 0 ? `
                                 <span class="text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/60 px-2 py-0.5 rounded-md font-bold">
-                                  🎁 手信共${giftCount}件：¥${giftTotal.toLocaleString()} (約 $${toHKD(giftTotal)} HKD)
+                                  🎁 手信共${billGiftCount}件：¥${billGiftTotal.toLocaleString()} (約 $${toHKD(billGiftTotal)} HKD)
                                 </span>
                               ` : ''}
                             </div>
                             <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                                                            ${exp.subItems.map((sub, sIdx) => {
+                              ${exp.subItems.map((sub, sIdx) => {
                                 const subImgJson = sub.img ? JSON.stringify([sub.img]).replace(/"/g, '&quot;') : '';
                                 return `
                                   <div class="flex items-center gap-1.5 p-1.5 rounded-lg border transition ${sub.isGift ? 'bg-pink-50/80 border-pink-300 dark:bg-pink-950/40 dark:border-pink-800' : 'bg-slate-50 border-slate-100 dark:bg-slate-700/50 dark:border-slate-600'}">
@@ -1697,15 +1740,15 @@
                                       <img src="${sub.img}" onclick="openLightbox(${subImgJson}, 0)" class="w-8 h-8 object-cover rounded cursor-pointer shrink-0 border" alt="單品">
                                     ` : ''}
                                     <div class="min-w-0 flex-1">
-                                      <div class="text-[11px] text-slate-700 dark:text-slate-200 font-medium truncate">${sub.name || '物品'}</div>
+                                      <div class="text-[10px] text-slate-700 dark:text-slate-200 font-medium truncate flex items-center gap-1">
+                                        <span>${sub.name || '物品'}</span>
+                                      </div>
                                       ${sub.price ? `
                                         <div class="text-[9px] font-mono font-bold ${sub.isGift ? 'text-pink-600 dark:text-pink-400' : 'text-indigo-600 dark:text-indigo-400'}">
                                           ¥${sub.price.toLocaleString()} <span class="font-normal text-slate-400">($${toHKD(sub.price)})</span>
                                         </div>
                                       ` : ''}
                                     </div>
-
-                                    <!-- ⭐ 直接點擊切換手信按鈕 ⭐ -->
                                     <button type="button" onclick="toggleSubItemGift('${exp.id}', ${sIdx})" class="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 transition flex items-center gap-0.5 ${sub.isGift ? 'bg-pink-600 text-white shadow-sm' : 'bg-slate-200/80 text-slate-500 hover:bg-pink-100 hover:text-pink-600 dark:bg-slate-600 dark:text-slate-300'}" title="點擊切換手信狀態">
                                       <span>🎁</span>
                                       <span>${sub.isGift ? '手信' : '+手信'}</span>
@@ -1725,7 +1768,6 @@
                           </button>
                         ` : '<span class="text-[11px] text-slate-400">無相片</span>'}
                         
-                        <!-- ✏️ 編輯掣與 🗑️ 刪除掣 -->
                         <div class="flex items-center gap-2">
                           <button onclick="editExpense('${exp.id}')" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-1" title="修改這筆消費">
                             <i class="fa-solid fa-pen-to-square text-xs"></i>
