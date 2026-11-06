@@ -1088,6 +1088,43 @@
       }
     });
 
+    // ⭐ 補回：讀取 Firebase 儲存的自訂分類與區域 ⭐
+    onSnapshot(doc(db, "settings", "app_config"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.regions && Array.isArray(data.regions) && data.regions.length > 0) {
+          regions = data.regions;
+        }
+        if (data.categories && Array.isArray(data.categories) && data.categories.length > 0) {
+          categories = data.categories.map((c, idx) => {
+            if (typeof c === 'string') {
+              const fallback = categoryPalette[idx % categoryPalette.length];
+              return {
+                name: c,
+                icon: fallback.icon || 'fa-tag',
+                hex: fallback.hex || '#4f46e5',
+                color: fallback.color || 'bg-slate-100 text-slate-800 border-slate-300',
+                activeBg: fallback.activeBg || 'bg-slate-800 text-white'
+              };
+            } else if (c && typeof c === 'object') {
+              const fallback = categoryPalette[idx % categoryPalette.length];
+              return {
+                name: c.name || '未命名',
+                icon: c.icon || fallback.icon || 'fa-tag',
+                hex: c.hex || fallback.hex || '#4f46e5',
+                color: c.color || fallback.color || 'bg-slate-100 text-slate-800 border-slate-300',
+                activeBg: c.activeBg || fallback.activeBg || 'bg-slate-800 text-white'
+              };
+            }
+            return c;
+          });
+        }
+        renderApp();
+        renderModalStationShortcuts();
+        populateSelects();
+      }
+    });
+
     // 監聽景點
     onSnapshot(collection(db, "places"), (snapshot) => {
       allPlaces = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
