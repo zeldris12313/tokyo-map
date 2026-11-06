@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>旅程記帳與收據管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Tesseract.js (收據 OCR 自動辨識，只在記帳頁載入) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body class="bg-[#f3f4f6] dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen transition-colors duration-200">
+
+  <!-- 頂部 Header -->
+  <header class="bg-[#4f46e5] dark:bg-slate-800 text-white px-4 py-3 shadow-md sticky top-0 z-40 border-b dark:border-slate-700">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2.5">
+      <div class="w-full md:w-auto flex flex-wrap justify-between items-center gap-2">
+        <div class="flex items-center gap-2">
+          <i class="fa-regular fa-compass text-lg"></i>
+          <h1 class="text-base font-bold whitespace-nowrap">自由行記帳收據</h1>
+          <button id="theme-toggle-btn" onclick="toggleDarkMode()" class="bg-indigo-700/80 hover:bg-indigo-600 dark:bg-slate-700 text-yellow-300 w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-sm transition ml-1">
+            <i id="theme-icon" class="fa-solid fa-moon"></i>
+          </button>
+        </div>
+
+        <!-- 獨立分頁跳轉導航列 -->
+        <nav class="flex items-center bg-indigo-700/70 dark:bg-slate-700 p-1 rounded-xl text-xs font-bold gap-1 w-full sm:w-auto justify-around">
+          <a href="index.html" class="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition whitespace-nowrap flex items-center justify-center gap-1">
+            <i class="fa-solid fa-map-location-dot"></i> 行程地圖
+          </a>
+          <a href="expenses.html" class="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition whitespace-nowrap flex items-center justify-center gap-1">
+            <i class="fa-solid fa-receipt"></i> 記帳收據
+          </a>
+          <a href="wishlist.html" class="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition whitespace-nowrap flex items-center justify-center gap-1">
+            <i class="fa-solid fa-bag-shopping"></i> 想買相簿
+          </a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- 記帳主內容 -->
+  <main class="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
+    <!-- 頂部概覽卡片 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col justify-between gap-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-xs text-slate-400 font-bold block">總支出 (日圓 JPY)</span>
+            <div id="total-expense-jpy" class="text-2xl font-black text-indigo-600 dark:text-indigo-400">¥ 0</div>
+          </div>
+          <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-slate-700 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-lg">
+            <i class="fa-solid fa-yen-sign"></i>
+          </div>
+        </div>
+
+        <!-- 匯率設定 -->
+        <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs">
+          <span class="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
+            <i class="fa-solid fa-arrow-right-arrow-left text-[11px] text-indigo-600 dark:text-indigo-400"></i> 匯率 (JPY ➔ HKD):
+          </span>
+          <div class="flex items-center gap-1">
+            <span class="text-slate-400 font-mono text-[11px]">x</span>
+            <input type="number" id="custom-exchange-rate" step="0.001" min="0.01" max="0.2" value="0.049" oninput="updateExchangeRate(this.value)" class="w-16 p-1 text-center bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 outline-none focus:ring-1 focus:ring-indigo-500">
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 font-bold block">總筆數</span>
+          <span id="total-receipts-count" class="text-2xl font-black text-slate-700 dark:text-slate-200">0 筆</span>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-emerald-50 dark:bg-slate-700 flex items-center justify-center text-emerald-600 text-lg">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 font-bold block">天數涵蓋</span>
+          <span id="days-covered-count" class="text-2xl font-black text-slate-700 dark:text-slate-200">0 天</span>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-amber-50 dark:bg-slate-700 flex items-center justify-center text-amber-600 text-lg">
+          <i class="fa-regular fa-calendar-days"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 記帳表單 -->
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-4">
+      <div class="flex justify-between items-center border-b dark:border-slate-700 pb-3">
+        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
+          <i class="fa-solid fa-camera text-indigo-600"></i> 上傳收據 / 新增花費
+        </h3>
+        <span id="ocr-status" class="text-xs text-indigo-600 font-bold"></span>
+      </div>
+
+      <form id="expense-form" onsubmit="return false;" class="space-y-3 text-xs text-slate-800">
+        <input type="hidden" id="exp-edit-id">
+
+        <!-- 📸 上傳收據相片 (選填) -->
+        <div class="bg-indigo-50/70 dark:bg-slate-700/50 p-3 rounded-xl border border-indigo-100 dark:border-slate-600 space-y-2">
+          <div class="flex justify-between items-center">
+            <label class="block font-bold text-slate-700 dark:text-slate-200 text-xs">📸 上傳收據相片 (自動偵測金額與店家，選填)</label>
+            <span id="ocr-status-inline" class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold"></span>
+          </div>
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <input type="file" id="receipt-image-file" accept="image/*" class="w-full p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:bg-indigo-600 file:text-white file:text-xs file:font-bold hover:file:bg-indigo-700">
+            <button type="button" onclick="scanReceiptOCR()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 shrink-0 shadow-sm whitespace-nowrap">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 辨識收據
+            </button>
+          </div>
+        </div>
+
+        <!-- 核心欄位 -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div>
+            <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">消費日期</label>
+            <input type="date" id="exp-date" class="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">店家 / 品項名稱 (選填)</label>
+            <input type="text" id="exp-title" placeholder="如不填會自動以戰利品命名" class="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block font-medium text-slate-700 dark:text-slate-300">總金額 JPY (選填)</label>
+              <button type="button" onclick="calcTotalFromSubItems()" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
+                <i class="fa-solid fa-calculator"></i> 自動加總細項
+              </button>
+            </div>
+            <input type="number" id="exp-amount" placeholder="手入或點自動加總" class="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+          </div>
+        </div>
+
+        <!-- 單品細項記錄 (含「手信」與「男友」標籤) -->
+        <div class="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2.5">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <i class="fa-solid fa-tags text-indigo-600"></i> 單品細項記錄 (可加相片、價錢與標籤，選填)
+            </span>
+            <button type="button" onclick="addSubItemRow()" class="bg-indigo-50 dark:bg-slate-600 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-xs px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition">
+              <i class="fa-solid fa-plus"></i> + 新增單品
+            </button>
+          </div>
+          <div id="sub-items-container" class="space-y-2"></div>
+        </div>
+
+        <div>
+          <input type="text" id="exp-items" placeholder="備註 (選填，例如: 涉谷買的、零食...)" class="w-full p-2 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+        </div>
+
+        <div class="flex items-center gap-2 pt-1">
+          <button type="button" id="exp-cancel-edit-btn" onclick="cancelExpenseEdit()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 px-4 rounded-xl font-bold transition">
+            取消
+          </button>
+          <button type="button" id="exp-submit-btn" onclick="handleSaveExpense()" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold hover:bg-indigo-700 shadow-sm transition">
+            儲存此筆花費
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 各日花費明細記錄 (手風琴) -->
+    <div class="space-y-4">
+      <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
+        <i class="fa-solid fa-calendar-day text-indigo-600"></i> 各日花費明細記錄 (依日子分組)
+      </h4>
+      <div id="expenses-by-date-container" class="space-y-4"></div>
+    </div>
+  </main>
+
+  <!-- 燈箱 (Lightbox) -->
+  <div id="lightboxModal" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center hidden p-4 select-none" onclick="closeLightbox(event)">
+    <button onclick="closeLightbox(event, true)" class="absolute top-4 right-4 text-white hover:text-slate-300 text-2xl z-10 p-2">✕</button>
+    <div class="max-w-4xl max-h-[85vh] p-2 flex flex-col items-center">
+      <img id="lightbox-img" src="" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl">
+    </div>
+  </div>
+
+  <!-- 邏輯 Script -->
+  <script type="module">
+    import { db, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, compressImage } from "./firebase-config.js";
+
+    let allExpenses = [];
+    let openDateTabs = {};
+    window.currentExchangeRate = parseFloat(localStorage.getItem('tokyo_exchange_rate')) || 0.049;
+
+    window.updateExchangeRate = (val) => {
+      const parsed = parseFloat(val);
+      if (!isNaN(parsed) && parsed > 0) {
+        window.currentExchangeRate = parsed;
+        localStorage.setItem('tokyo_exchange_rate', parsed);
+        renderExpensesGroupedByDate();
+      }
+    };
+
+    window.toggleDateCollapse = (dateStr) => {
+      openDateTabs[dateStr] = !openDateTabs[dateStr];
+      renderExpensesGroupedByDate();
+    };
+
+    // 新增單品輸入行
+    window.addSubItemRow = (name = '', price = '', img = '', isGift = false, isBoyfriend = false) => {
+      const container = document.getElementById('sub-items-container');
+      const rowId = 'sub-row-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+      
+      const rowDiv = document.createElement('div');
+      rowDiv.id = rowId;
+      rowDiv.className = "flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-600 text-xs";
+      rowDiv.innerHTML = `
+        <div class="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 flex items-center justify-center">
+          <img src="${img || ''}" class="sub-img-preview w-full h-full object-cover ${img ? '' : 'hidden'}">
+          <i class="fa-solid fa-image text-slate-300 sub-img-placeholder ${img ? 'hidden' : ''}"></i>
+          <input type="file" accept="image/*" onchange="previewSubItemImage(event, '${rowId}')" class="absolute inset-0 opacity-0 cursor-pointer text-[0px]" title="上傳物品相片">
+          <input type="hidden" class="sub-img-data" value="${img || ''}">
+        </div>
+        <input type="text" placeholder="品名" value="${name}" class="sub-item-name flex-1 min-w-[90px] p-1.5 border border-slate-200 dark:border-slate-600 rounded-lg outline-none bg-transparent">
+        <div class="flex items-center gap-1 shrink-0">
+          <span class="text-slate-400 font-mono">¥</span>
+          <input type="number" placeholder="金額" value="${price}" oninput="calcTotalFromSubItems(false)" class="sub-item-price w-16 p-1.5 border border-slate-200 dark:border-slate-600 rounded-lg outline-none font-mono font-bold bg-transparent">
+        </div>
+        <label class="flex items-center gap-1 cursor-pointer select-none bg-pink-50 dark:bg-pink-950/40 px-2 py-1 rounded-lg border border-pink-200 dark:border-pink-800 text-[11px] font-bold text-pink-700 dark:text-pink-300 shrink-0">
+          <input type="checkbox" class="sub-item-gift rounded text-pink-600" ${isGift ? 'checked' : ''}>
+          <span>手信</span>
+        </label>
+        <label class="flex items-center gap-1 cursor-pointer select-none bg-sky-50 dark:bg-sky-950/40 px-2 py-1 rounded-lg border border-sky-200 dark:border-sky-800 text-[11px] font-bold text-sky-700 dark:text-sky-300 shrink-0">
+          <input type="checkbox" class="sub-item-boyfriend rounded text-sky-600" ${isBoyfriend ? 'checked' : ''}>
+          <span>男友</span>
+        </label>
+        <button type="button" onclick="removeSubItemRow('${rowId}')" class="text-slate-400 hover:text-red-500 p-1 shrink-0">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      `;
+      container.appendChild(rowDiv);
+    };
+
+    window.previewSubItemImage = async (e, rowId) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const b64 = await compressImage(file);
+      const row = document.getElementById(rowId);
+      if (row) {
+        row.querySelector('.sub-img-preview').src = b64;
+        row.querySelector('.sub-img-preview').classList.remove('hidden');
+        row.querySelector('.sub-img-placeholder').classList.add('hidden');
+        row.querySelector('.sub-img-data').value = b64;
+      }
+    };
+
+    window.removeSubItemRow = (rowId) => {
+      const row = document.getElementById(rowId);
+      if (row) row.remove();
+      calcTotalFromSubItems(false);
+    };
+
+    window.calcTotalFromSubItems = (showAlert = true) => {
+      const prices = document.querySelectorAll('.sub-item-price');
+      let sum = 0, count = 0;
+      prices.forEach(p => {
+        const val = parseFloat(p.value);
+        if (!isNaN(val) && val > 0) { sum += val; count++; }
+      });
+      if (count > 0) {
+        document.getElementById('exp-amount').value = sum;
+      } else if (showAlert) {
+        alert("目前細項未有填寫金額！");
+      }
+    };
+
+    function collectSubItemsData() {
+      const rows = document.querySelectorAll('#sub-items-container > div');
+      const list = [];
+      rows.forEach(r => {
+        const name = r.querySelector('.sub-item-name')?.value.trim() || '';
+        const price = parseFloat(r.querySelector('.sub-item-price')?.value) || 0;
+        const img = r.querySelector('.sub-img-data')?.value || '';
+        const isGift = r.querySelector('.sub-item-gift')?.checked || false;
+        const isBoyfriend = r.querySelector('.sub-item-boyfriend')?.checked || false;
+        if (name || price > 0 || img) list.push({ name, price, img, isGift, isBoyfriend });
+      });
+      return list;
+    }
+
+    // 儲存花費
+    window.handleSaveExpense = async () => {
+      const submitBtn = document.getElementById('exp-submit-btn');
+      const originalText = submitBtn ? submitBtn.innerText : '儲存此筆花費';
+
+      const editId = (document.getElementById('exp-edit-id')?.value || '').trim();
+      const dateVal = document.getElementById('exp-date')?.value || new Date().toISOString().split('T')[0];
+      let titleVal = (document.getElementById('exp-title')?.value || '').trim();
+      let amountVal = parseFloat(document.getElementById('exp-amount')?.value) || 0;
+      const itemsVal = (document.getElementById('exp-items')?.value || '').trim();
+
+      const fileInput = document.getElementById('receipt-image-file');
+      const hasReceiptFile = fileInput && fileInput.files && fileInput.files.length > 0;
+      const subItems = collectSubItemsData();
+
+      if (amountVal <= 0 && subItems.length > 0) {
+        const subSum = subItems.reduce((acc, cur) => acc + (cur.price || 0), 0);
+        if (subSum > 0) amountVal = subSum;
+      }
+
+      if (!hasReceiptFile && subItems.length === 0 && amountVal <= 0 && !titleVal && !itemsVal) {
+        alert("請至少上傳一張相片、輸入一件產品或輸入金額！");
+        return;
+      }
+
+      if (!titleVal) {
+        if (subItems.length > 0 && subItems[0].name) {
+          titleVal = subItems[0].name + (subItems.length > 1 ? ` 等${subItems.length}件` : '');
+        } else if (hasReceiptFile) {
+          titleVal = "收據消費";
+        } else {
+          titleVal = "一般花費";
+        }
+      }
+
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = "⏳ 儲存中..."; }
+
+      try {
+        let receiptImg = '';
+        if (hasReceiptFile) {
+          receiptImg = await compressImage(fileInput.files[0]);
+        }
+
+        const expenseData = {
+          date: dateVal,
+          title: titleVal,
+          amount: amountVal,
+          items: itemsVal,
+          subItems: subItems,
+          updatedAt: new Date()
+        };
+        if (receiptImg) expenseData.receiptImg = receiptImg;
+
+        if (editId) {
+          await updateDoc(doc(db, "expenses", editId), expenseData);
+          alert("✅ 花費已成功更新！");
+        } else {
+          expenseData.createdAt = new Date();
+          await addDoc(collection(db, "expenses"), expenseData);
+          alert("✅ 花費已成功儲存！");
+        }
+        cancelExpenseEdit();
+      } catch (err) {
+        console.error(err);
+        alert("❌ 儲存失敗：" + err.message);
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = originalText; }
+      }
+    };
+
+    // 一鍵切換手信與男友
+    window.toggleSubItemGift = async (expenseId, subIndex) => {
+      const exp = allExpenses.find(item => item.id === expenseId);
+      if (!exp || !exp.subItems || !exp.subItems[subIndex]) return;
+      exp.subItems[subIndex].isGift = !exp.subItems[subIndex].isGift;
+      renderExpensesGroupedByDate();
+      await updateDoc(doc(db, "expenses", expenseId), { subItems: exp.subItems, updatedAt: new Date() });
+    };
+
+    window.toggleSubItemBoyfriend = async (expenseId, subIndex) => {
+      const exp = allExpenses.find(item => item.id === expenseId);
+      if (!exp || !exp.subItems || !exp.subItems[subIndex]) return;
+      exp.subItems[subIndex].isBoyfriend = !exp.subItems[subIndex].isBoyfriend;
+      renderExpensesGroupedByDate();
+      await updateDoc(doc(db, "expenses", expenseId), { subItems: exp.subItems, updatedAt: new Date() });
+    };
+
+    window.editExpense = (id) => {
+      const exp = allExpenses.find(item => item.id === id);
+      if (!exp) return;
+      document.getElementById('exp-edit-id').value = exp.id || '';
+      document.getElementById('exp-date').value = exp.date || '';
+      document.getElementById('exp-title').value = exp.title || '';
+      document.getElementById('exp-amount').value = exp.amount || '';
+      document.getElementById('exp-items').value = exp.items || '';
+
+      const container = document.getElementById('sub-items-container');
+      container.innerHTML = '';
+      if (exp.subItems && Array.isArray(exp.subItems)) {
+        exp.subItems.forEach(sub => {
+          addSubItemRow(sub.name || '', sub.price || '', sub.img || '', !!sub.isGift, !!sub.isBoyfriend);
+        });
+      }
+
+      document.getElementById('exp-submit-btn').innerText = "更新此筆花費";
+      document.getElementById('exp-cancel-edit-btn').classList.remove('hidden');
+      document.getElementById('expense-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    window.cancelExpenseEdit = () => {
+      document.getElementById('expense-form').reset();
+      document.getElementById('exp-edit-id').value = '';
+      document.getElementById('sub-items-container').innerHTML = '';
+      document.getElementById('exp-submit-btn').innerText = "儲存此筆花費";
+      document.getElementById('exp-cancel-edit-btn').classList.add('hidden');
+    };
+
+    window.deleteExpense = async (id) => {
+      if (confirm("確定刪除此筆記錄？")) await deleteDoc(doc(db, "expenses", id));
+    };
+
+    // 渲染手風琴明細
+    function renderExpensesGroupedByDate() {
+      const toHKD = (jpy) => Math.round((jpy || 0) * window.currentExchangeRate).toLocaleString();
+
+      const totalJPY = allExpenses.reduce((sum, item) => sum + (item.amount || 0), 0);
+      let grandGiftTotal = 0, grandGiftCount = 0;
+      let grandBfTotal = 0, grandBfCount = 0;
+
+      allExpenses.forEach(exp => {
+        if (exp.subItems && Array.isArray(exp.subItems)) {
+          exp.subItems.forEach(s => {
+            if (s.isGift) { grandGiftTotal += (s.price || 0); grandGiftCount++; }
+            if (s.isBoyfriend) { grandBfTotal += (s.price || 0); grandBfCount++; }
+          });
+        }
+      });
+
+      document.getElementById('total-expense-jpy').innerHTML = `
+        <div class="flex items-baseline gap-1.5 flex-wrap">
+          <span>¥ ${totalJPY.toLocaleString()}</span>
+          <span class="text-xs font-normal text-slate-400">(約 $${toHKD(totalJPY)} HKD)</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5 mt-1.5">
+          ${grandGiftTotal > 0 ? `
+            <div class="text-[11px] font-bold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/60 px-2.5 py-0.5 rounded-lg">
+              🎁 手信 (${grandGiftCount}件): ¥${grandGiftTotal.toLocaleString()} ($${toHKD(grandGiftTotal)})
+            </div>
+          ` : ''}
+          ${grandBfTotal > 0 ? `
+            <div class="text-[11px] font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-2.5 py-0.5 rounded-lg">
+              👦 男友 (${grandBfCount}件): ¥${grandBfTotal.toLocaleString()} ($${toHKD(grandBfTotal)})
+            </div>
+          ` : ''}
+        </div>
+      `;
+      document.getElementById('total-receipts-count').innerText = `${allExpenses.length} 筆`;
+
+      const groups = {};
+      allExpenses.forEach(exp => {
+        const d = exp.date || '未設定日期';
+        if (!groups[d]) groups[d] = [];
+        groups[d].push(exp);
+      });
+
+      const sortedDates = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
+      document.getElementById('days-covered-count').innerText = `${sortedDates.length} 天`;
+      const container = document.getElementById('expenses-by-date-container');
+
+      if (sortedDates.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 text-xs">
+            尚無任何收據記錄
+          </div>
+        `;
+        return;
+      }
+
+      if (Object.keys(openDateTabs).length === 0 && sortedDates.length > 0) {
+        openDateTabs[sortedDates[0]] = true;
+      }
+
+      container.innerHTML = sortedDates.map((dateStr, idx) => {
+        const dayItems = groups[dateStr];
+        const dayTotal = dayItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+        const isOpen = !!openDateTabs[dateStr];
+
+        let dayGiftTotal = 0, dayGiftCount = 0;
+        let dayBfTotal = 0, dayBfCount = 0;
+        dayItems.forEach(exp => {
+          if (exp.subItems && Array.isArray(exp.subItems)) {
+            exp.subItems.forEach(s => {
+              if (s.isGift) { dayGiftTotal += (s.price || 0); dayGiftCount++; }
+              if (s.isBoyfriend) { dayBfTotal += (s.price || 0); dayBfCount++; }
+            });
+          }
+        });
+
+        return `
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div onclick="toggleDateCollapse('${dateStr}')" class="bg-indigo-50/70 hover:bg-indigo-100/60 dark:bg-slate-700/60 px-4 py-3 flex justify-between items-center cursor-pointer select-none">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-chevron-right text-xs text-indigo-600 dark:text-indigo-400 transition-transform ${isOpen ? 'rotate-90' : ''}"></i>
+                <span class="bg-indigo-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">Day ${sortedDates.length - idx}</span>
+                <span class="font-bold text-slate-800 dark:text-slate-100 text-xs">📅 ${dateStr}</span>
+                <span class="text-[11px] text-slate-400">(${dayItems.length}筆)</span>
+              </div>
+              <div class="text-right space-y-0.5">
+                <div>
+                  <span class="text-sm font-black text-indigo-700 dark:text-indigo-400 font-mono">¥ ${dayTotal.toLocaleString()}</span>
+                  <span class="text-[10px] text-slate-500 dark:text-slate-400 block sm:inline sm:ml-1">(約 $${toHKD(dayTotal)} HKD)</span>
+                </div>
+                <div class="flex items-center justify-end gap-1.5 text-[10px] font-bold">
+                  ${dayGiftTotal > 0 ? `<span class="text-pink-600 dark:text-pink-400">🎁 手信(${dayGiftCount}): ¥${dayGiftTotal.toLocaleString()}</span>` : ''}
+                  ${dayBfTotal > 0 ? `<span class="text-sky-600 dark:text-sky-400">👦 男友(${dayBfCount}): ¥${dayBfTotal.toLocaleString()}</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div class="${isOpen ? 'block' : 'hidden'} p-3 space-y-2 border-t border-slate-100 dark:border-slate-700">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                ${dayItems.map(exp => {
+                  const billGiftTotal = (exp.subItems || []).filter(s => s.isGift).reduce((sum, s) => sum + (s.price || 0), 0);
+                  const billGiftCount = (exp.subItems || []).filter(s => s.isGift).length;
+                  const billBfTotal = (exp.subItems || []).filter(s => s.isBoyfriend).reduce((sum, s) => sum + (s.price || 0), 0);
+                  const billBfCount = (exp.subItems || []).filter(s => s.isBoyfriend).length;
+
+                  return `
+                    <div class="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-3 border border-slate-100 dark:border-slate-600 flex flex-col justify-between space-y-2">
+                      <div class="flex justify-between items-start gap-2">
+                        <div>
+                          <h5 class="font-bold text-slate-800 dark:text-slate-100 text-xs">${exp.title}</h5>
+                          ${exp.items ? `<p class="text-[11px] text-slate-500 dark:text-slate-400">📝 ${exp.items}</p>` : ''}
+                        </div>
+                        <div class="text-right shrink-0">
+                          <span class="font-black text-indigo-600 dark:text-indigo-400 text-xs font-mono">¥ ${(exp.amount || 0).toLocaleString()}</span>
+                          <span class="text-[10px] text-slate-400 block">(約 $${toHKD(exp.amount || 0)} HKD)</span>
+                        </div>
+                      </div>
+
+                      ${(exp.subItems && exp.subItems.length > 0) ? `
+                        <div class="space-y-1.5 bg-white dark:bg-slate-800/80 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                          <div class="text-[10px] font-bold text-slate-400 flex flex-wrap justify-between items-center gap-1">
+                            <span>🛍️ 細項 (${exp.subItems.length}件):</span>
+                            <div class="flex gap-1">
+                              ${billGiftCount > 0 ? `<span class="text-pink-600 font-bold">🎁 ¥${billGiftTotal.toLocaleString()}</span>` : ''}
+                              ${billBfCount > 0 ? `<span class="text-sky-600 font-bold">👦 ¥${billBfTotal.toLocaleString()}</span>` : ''}
+                            </div>
+                          </div>
+                          <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                            ${exp.subItems.map((sub, sIdx) => `
+                              <div class="flex items-center gap-1 p-1 rounded-md border ${sub.isBoyfriend && sub.isGift ? 'border-purple-300 bg-purple-50/50' : sub.isBoyfriend ? 'border-sky-300 bg-sky-50/50' : sub.isGift ? 'border-pink-300 bg-pink-50/50' : 'border-slate-200 bg-slate-50'}">
+                                ${sub.img ? `<img src="${sub.img}" onclick="openLightbox('${sub.img}')" class="w-7 h-7 object-cover rounded shrink-0">` : ''}
+                                <div class="min-w-0 flex-1">
+                                  <div class="text-[10px] truncate font-medium">${sub.name || '物品'}</div>
+                                  <div class="text-[9px] font-bold font-mono text-indigo-600">¥${(sub.price || 0).toLocaleString()}</div>
+                                </div>
+                                <div class="flex flex-col gap-0.5 shrink-0">
+                                  <button type="button" onclick="toggleSubItemGift('${exp.id}', ${sIdx})" class="px-1 text-[8px] rounded font-bold ${sub.isGift ? 'bg-pink-600 text-white' : 'bg-slate-200 text-slate-500'}">🎁</button>
+                                  <button type="button" onclick="toggleSubItemBoyfriend('${exp.id}', ${sIdx})" class="px-1 text-[8px] rounded font-bold ${sub.isBoyfriend ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-500'}">👦</button>
+                                </div>
+                              </div>
+                            `).join('')}
+                          </div>
+                        </div>
+                      ` : ''}
+
+                      <div class="pt-1.5 border-t border-slate-200/50 dark:border-slate-600/50 flex items-center justify-between text-xs">
+                        ${exp.receiptImg ? `
+                          <button type="button" onclick="openLightbox('${exp.receiptImg}')" class="text-indigo-600 font-semibold text-[11px] hover:underline">
+                            <i class="fa-solid fa-receipt"></i> 查看收據相片
+                          </button>
+                        ` : '<span class="text-[11px] text-slate-400">無收據相片</span>'}
+                        <div class="flex items-center gap-2">
+                          <button onclick="editExpense('${exp.id}')" class="text-slate-400 hover:text-indigo-600 p-1"><i class="fa-solid fa-pen-to-square"></i></button>
+                          <button onclick="deleteExpense('${exp.id}')" class="text-slate-300 hover:text-red-500 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 監聽 Firebase 記帳資料
+    onSnapshot(collection(db, "expenses"), (snapshot) => {
+      allExpenses = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      renderExpensesGroupedByDate();
+    });
+
+    window.openLightbox = (src) => {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightboxModal').classList.remove('hidden');
+    };
+    window.closeLightbox = () => document.getElementById('lightboxModal').classList.add('hidden');
+
+    window.toggleDarkMode = () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeIcon(isDark);
+    };
+    function updateThemeIcon(isDark) {
+      const icon = document.getElementById('theme-icon');
+      if (icon) icon.className = isDark ? 'fa-solid fa-sun text-amber-400' : 'fa-solid fa-moon text-yellow-300';
+    }
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+      updateThemeIcon(true);
+    }
+  </script>
+</body>
+</html>
