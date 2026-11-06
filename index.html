@@ -1886,8 +1886,55 @@
     };
 
     window.deleteMemoItem = async (id) => {
-      await deleteDoc(doc(db, "memo_items", id));
+      if (confirm("確定刪除此備忘項目嗎？")) {
+        await deleteDoc(doc(db, "memo_items", id));
+      }
     };
+
+    // ⭐ 補回：備忘圖片與分隔線即時渲染與雲端監聽 ⭐
+    function renderMemoItems() {
+      const container = document.getElementById('memo-items-container');
+      if (!container) return;
+
+      if (allMemoItems.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const allMemoImgs = allMemoItems.filter(i => i.type === 'image' && i.imageUrl).map(i => i.imageUrl);
+      const jsonImgs = JSON.stringify(allMemoImgs).replace(/"/g, '&quot;');
+
+      let imgCounter = 0;
+      container.innerHTML = allMemoItems.map((item) => {
+        if (item.type === 'divider') {
+          return `
+            <div class="flex items-center justify-between border-b border-amber-300/80 pt-2 pb-1 text-xs font-bold text-amber-900">
+              <span>--- ${item.title || '分隔線'} ---</span>
+              <button type="button" onclick="deleteMemoItem('${item.id}')" class="text-amber-600 hover:text-red-500 text-[11px] p-0.5">✕</button>
+            </div>
+          `;
+        }
+
+        const currentIdx = imgCounter++;
+        return `
+          <div class="inline-block relative group m-1">
+            <img src="${item.imageUrl}" onclick="openLightbox(${jsonImgs}, ${currentIdx})" class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border border-amber-200 shadow-sm cursor-pointer hover:opacity-80 transition" alt="備忘圖片">
+            <button type="button" onclick="deleteMemoItem('${item.id}')" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center shadow opacity-80 hover:opacity-100">✕</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    onSnapshot(collection(db, "memo_items"), (snapshot) => {
+      allMemoItems = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      // 依建立時間排序，保持分隔線與相片的先後順序
+      allMemoItems.sort((a, b) => {
+        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+        return timeA - timeB;
+      });
+      renderMemoItems();
+    });
 
     window.uploadQRCode = async () => {
       const titleInput = document.getElementById('qr-title-input');
