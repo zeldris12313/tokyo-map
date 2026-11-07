@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>關西大阪自由行筆記</title>
+  
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Leaflet 地圖套件 -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Google 官方 Open Location Code (Plus Code) 解碼套件 -->
+  <script src="https://cdn.jsdelivr.net/npm/open-location-code@1.0.4/openlocationcode.min.js"></script>
+
+  <!-- SortableJS 拖拉排序套件 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+  <style>
+    #map { height: 320px; width: 100%; border-radius: 1rem; z-index: 1; }
+    #modal-adjust-map { height: 220px; width: 100%; border-radius: 0.75rem; z-index: 1; }
+    .card-highlight { animation: highlight 2s ease-in-out; }
+    @keyframes highlight {
+      0% { transform: scale(1); ring: 4px #4f46e5; }
+      50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(79, 70, 229, 0.4); }
+      100% { transform: scale(1); }
+    }
+    .ghost { opacity: 0.4; background: #e0e7ff !important; }
+    .hotel-mini-map { height: 160px; width: 100%; border-radius: 0.75rem; z-index: 1; }
+  </style>
+</head>
+<body class="bg-[#f3f4f6] dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen transition-colors duration-200">
+
+  <!-- 頂部 Header 與分頁切換 -->
+  <header class="bg-[#4f46e5] dark:bg-slate-800 text-white px-4 py-3 shadow-md sticky top-0 z-40 border-b dark:border-slate-700">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2.5">
+      
+      <!-- 第一排：標題 + 城市切換 + 深淺色切換 + 頁面導航 -->
+      <div class="w-full md:w-auto flex flex-wrap justify-between items-center gap-2">
+        <div class="flex items-center gap-2">
+          <i class="fa-regular fa-compass text-lg"></i>
+          <h1 class="text-base font-bold whitespace-nowrap">關西大阪自由行筆記</h1>
+
+          <!-- 城市切換膠囊按鈕 -->
+          <div class="inline-flex bg-indigo-900/60 p-0.5 rounded-lg text-xs font-bold ml-1">
+            <a href="index.html" class="px-2 py-0.5 rounded-md transition text-indigo-200 hover:text-white">🗼 東京</a>
+            <a href="osaka.html" class="px-2 py-0.5 rounded-md transition text-white bg-indigo-600 shadow-sm">🏯 大阪</a>
+          </div>
+
+          <button id="theme-toggle-btn" onclick="toggleDarkMode()" class="bg-indigo-700/80 hover:bg-indigo-600 dark:bg-slate-700 text-yellow-300 w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-sm transition ml-1" title="切換深色/淺色模式">
+            <i id="theme-icon" class="fa-solid fa-moon"></i>
+          </button>
+        </div>
+
+        <!-- 獨立分頁導航 -->
+        <nav class="flex items-center bg-indigo-700/70 dark:bg-slate-700 p-1 rounded-xl text-xs font-bold gap-1 w-full sm:w-auto justify-around">
+          <a href="osaka.html" class="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg bg-white text-indigo-700 shadow-sm transition whitespace-nowrap flex items-center justify-center gap-1">
+            <i class="fa-solid fa-map-location-dot"></i> 大阪行程
+          </a>
+          <a href="expenses.html" class="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition whitespace-nowrap flex items-center justify-center gap-1">
+            <i class="fa-solid fa-receipt"></i> 記帳收據
+          </a>
+          <a href="wishlist.html" class="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg text-white hover:bg-indigo-600 transition whitespace-nowrap flex items-center justify-center gap-1">
+            <i class="fa-solid fa-bag-shopping"></i> 想買相簿
+          </a>
+        </nav>
+      </div>
+
+      <!-- 第二排：三個快捷按鈕 -->
+      <div class="w-full md:w-auto flex items-center justify-end gap-2">
+        <button onclick="openFHModal('flight')" class="flex-1 md:flex-initial justify-center bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+          <i class="fa-solid fa-plane"></i> + 航班
+        </button>
+        <button onclick="openFHModal('hotel')" class="flex-1 md:flex-initial justify-center bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+          <i class="fa-solid fa-hotel"></i> + 酒店
+        </button>
+        <button onclick="openAddModal()" class="flex-1 md:flex-initial justify-center bg-[#facc15] hover:bg-yellow-400 text-slate-900 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+          <i class="fa-solid fa-circle-plus"></i> 新增大阪景點/食店
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- 主畫面 -->
+  <div class="max-w-7xl mx-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+
+    <!-- 左側邊欄 -->
+    <aside class="md:col-span-1 space-y-5">
+      <!-- 1. 主要車站/區域 -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-map-location-dot text-indigo-600"></i> 主要區域 / 車站
+          </h2>
+          <div class="flex items-center gap-1">
+            <span id="region-count" class="text-xs text-slate-400">0個</span>
+            <button onclick="openManageRegionsModal()" class="text-xs text-indigo-600 hover:text-indigo-800 ml-1" title="管理區域與排序">
+              <i class="fa-solid fa-gear"></i>
+            </button>
+          </div>
+        </div>
+        <nav id="region-list" class="space-y-1"></nav>
+      </div>
+
+      <!-- 2. 準備物品/待辦清單 -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 space-y-3">
+        <div class="flex justify-between items-center border-b dark:border-slate-700 pb-2">
+          <h2 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-clipboard-check text-amber-500"></i> 準備物品/待辦清單
+          </h2>
+          <span class="text-[10px] text-slate-400">按住 ::: 拖拉排序</span>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex gap-1.5">
+            <input type="text" id="todo-input" placeholder="新增物品 (例: 關西周遊券)" class="flex-1 p-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+            <button onclick="addTodo('item')" class="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-indigo-700">新增</button>
+          </div>
+          <button onclick="addTodo('divider')" class="w-full text-[11px] text-slate-500 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 py-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-600">
+            + 插入分隔線 (例如: --- 門票類 ---)
+          </button>
+        </div>
+
+        <div id="todo-list" class="space-y-1.5 max-h-80 overflow-y-auto text-xs pt-1"></div>
+      </div>
+
+      <!-- 3. 動態 QR Code 區塊 -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 space-y-3">
+        <div class="border-b dark:border-slate-700 pb-2 flex justify-between items-center">
+          <h2 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-qrcode text-indigo-600"></i> 門票 / QR Code 集合
+          </h2>
+          <span class="text-[10px] text-slate-400">點擊圖片放大</span>
+        </div>
+
+        <div class="space-y-2 bg-indigo-50/50 dark:bg-slate-700/50 p-2.5 rounded-xl border border-indigo-100 dark:border-slate-600 text-xs">
+          <input type="text" id="qr-title-input" placeholder="名稱 (例: USJ 環球影城門票)" class="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg outline-none">
+          <div class="flex gap-1.5 items-center">
+            <input type="file" id="qr-file-input" accept="image/*" class="w-full text-[11px] text-slate-500 file:mr-1.5 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700">
+            <button onclick="uploadQRCode()" class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold shrink-0 hover:bg-indigo-700">儲存</button>
+          </div>
+        </div>
+
+        <div id="qr-code-list" class="space-y-2 max-h-80 overflow-y-auto text-xs pt-1"></div>
+      </div>
+    </aside>
+
+    <!-- 右側主內容區 -->
+    <main class="md:col-span-3 space-y-5">
+
+      <!-- 1. 置頂備忘框 -->
+      <div class="bg-amber-50/90 dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-amber-200 dark:border-slate-700 space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="font-bold text-amber-900 dark:text-amber-400 text-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-note-sticky text-amber-600"></i> 大阪行程重點備忘錄 / 隨手記
+          </h3>
+          <span id="memo-status" class="text-[10px] text-amber-600 dark:text-amber-400">同步中...</span>
+        </div>
+        <textarea id="memo-input" rows="3" placeholder="在此記下南海電鐵車票、USJ 快速通關時間、WiFi 密碼等..." class="w-full p-2.5 bg-white/80 dark:bg-slate-700 border border-amber-200/80 dark:border-slate-600 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400"></textarea>
+
+        <div class="flex flex-wrap justify-between items-center gap-2 pt-1 border-t border-amber-200/60 dark:border-slate-700">
+          <div class="flex items-center gap-2">
+            <label class="bg-white dark:bg-slate-700 hover:bg-amber-100 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-slate-600 px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer flex items-center gap-1 shadow-sm transition">
+              <i class="fa-solid fa-image"></i> + 上傳備忘圖片
+              <input type="file" id="memo-img-file" accept="image/*" class="hidden" onchange="uploadMemoImage(event)">
+            </label>
+            <button onclick="addMemoDivider()" class="bg-white dark:bg-slate-700 hover:bg-amber-100 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-slate-600 px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 shadow-sm transition">
+              <i class="fa-solid fa-minus"></i> + 插入分隔線
+            </button>
+          </div>
+          <span class="text-[10px] text-amber-700/70 dark:text-slate-400">點擊圖片可放大</span>
+        </div>
+
+        <div id="memo-items-container" class="space-y-2 pt-1"></div>
+      </div>
+
+      <!-- 2. 航班與酒店卡片區 -->
+      <div id="flight-hotel-section" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+      <!-- 3. 即時搜尋列與分類頁籤 -->
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="relative w-full md:w-80">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+          <input type="text" id="search-input" placeholder="即時搜尋店名、區域、推介或備註..." class="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+        </div>
+        <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1" id="category-tabs"></div>
+      </div>
+
+      <!-- 4. Google 大地圖總覽區塊 (預設大阪) -->
+      <div id="map-section" class="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col gap-2">
+        <div class="w-full flex justify-between items-center px-1">
+          <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-map text-indigo-600 dark:text-indigo-400"></i> 關西大阪地圖總覽
+          </span>
+          <button type="button" onclick="locateUserPosition()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm transition whitespace-nowrap">
+            <i class="fa-solid fa-location-crosshairs"></i> 定位我
+          </button>
+        </div>
+        <div class="w-full">
+          <div id="map" class="w-full"></div>
+        </div>
+      </div>
+
+      <!-- 目前區域提示 -->
+      <div class="flex justify-between items-center">
+        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+          目前區域：<span id="current-region-label" class="text-indigo-600 dark:text-indigo-400">全部區域</span>
+        </h3>
+        <span id="places-count" class="text-xs text-slate-400">共 0 個地點</span>
+      </div>
+
+      <!-- 5. 地點列表卡片 -->
+      <div id="places-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+    </main>
+  </div>
+
+  <!-- Modal 1: 新增/編輯景點 -->
+  <div id="placeModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-700/50 rounded-t-2xl">
+        <h3 id="modalTitle" class="font-bold text-slate-800 dark:text-slate-100 text-sm">新增景點 / 食店</h3>
+        <button onclick="closePlaceModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <form id="place-form" class="p-5 space-y-4 text-sm text-slate-800 dark:text-slate-100">
+        <input type="hidden" id="edit-id">
+
+        <!-- Google Maps 原生根基搜尋器 -->
+        <div class="bg-indigo-50/70 dark:bg-slate-700/50 p-3.5 rounded-xl border border-indigo-200 dark:border-slate-600 space-y-2.5">
+          <div class="flex justify-between items-center">
+            <label class="block font-bold text-indigo-950 dark:text-indigo-300 text-xs flex items-center gap-1.5">
+              <i class="fa-brands fa-google text-indigo-600"></i> Google Maps / Plus Code 智慧搜尋定位
+            </label>
+            <span id="detect-status" class="text-[10px] text-indigo-700 dark:text-indigo-400 font-bold"></span>
+          </div>
+
+          <div class="flex gap-1.5">
+            <input type="text" id="map-url" placeholder="貼上 Plus Code、Maps 網址 或大阪店名" class="flex-1 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+            <button type="button" id="parse-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 flex items-center gap-1 shrink-0">
+              <i class="fa-solid fa-bolt"></i> 自動解析
+            </button>
+          </div>
+
+          <div id="search-candidates-box" class="hidden bg-white dark:bg-slate-800 rounded-xl border border-indigo-200 dark:border-slate-600 p-2 shadow-sm space-y-1 max-h-44 overflow-y-auto text-xs">
+            <div class="text-[11px] text-slate-400 px-1 pb-1 border-b">點擊符合項目自動填寫：</div>
+            <div id="search-candidates-list" class="space-y-1"></div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium mb-1">景點 / 店名 *</label>
+          <input type="text" id="title" required class="w-full p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium mb-1">主要區域 *</label>
+            <select id="region-select" class="w-full p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none"></select>
+          </div>
+          <div>
+            <label class="block font-medium mb-1">類別 *</label>
+            <select id="category-select" class="w-full p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none"></select>
+          </div>
+        </div>
+
+        <!-- 圖片上傳區塊 -->
+        <div class="space-y-3 bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200 dark:border-slate-600 text-xs">
+          <label class="block font-medium text-slate-700 dark:text-slate-300">主封面圖片 (網址或檔案)</label>
+          <input type="url" id="image-url" placeholder="貼上封面圖片網址 https://..." class="w-full p-2 bg-white dark:bg-slate-800 border rounded-lg outline-none">
+          <input type="file" id="image-file" accept="image/*" class="text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+
+          <hr class="border-slate-200 dark:border-slate-600 my-2">
+          <label class="block font-medium text-slate-700 dark:text-slate-300">額外相片上傳 (可多選)</label>
+          <input type="file" id="extra-images-file" accept="image/*" multiple class="text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
+          <div id="extra-images-preview" class="flex flex-wrap gap-2 pt-1"></div>
+        </div>
+
+        <div>
+          <label class="block font-medium mb-1">推介 / 必食內容</label>
+          <input type="text" id="recommendation" placeholder="例如：章魚燒、大阪燒、黑毛和牛" class="w-full p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none">
+        </div>
+
+        <div>
+          <label class="block font-medium mb-1">備註 / 日本地址</label>
+          <textarea id="notes" rows="2" placeholder="例如：排隊名店、可用乘車券優惠..." class="w-full p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-medium mb-1">Google Maps 導航連結</label>
+          <input type="url" id="nav-link" placeholder="導航連結" class="w-full p-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none">
+        </div>
+
+        <!-- 座標微調 (預設大阪道頓堀) -->
+        <div class="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2.5">
+          <span class="text-xs font-bold flex items-center gap-1">
+            <i class="fa-solid fa-crosshairs text-indigo-600"></i> 地圖座標微調 (可拖動紅色 Pin 點)
+          </span>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <input type="text" id="lat" placeholder="緯度 Lat" class="p-2 bg-white dark:bg-slate-800 border rounded-lg">
+            <input type="text" id="lng" placeholder="經度 Lng" class="p-2 bg-white dark:bg-slate-800 border rounded-lg">
+          </div>
+          <div id="modal-adjust-map" class="border"></div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">儲存大阪景點</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: 航班 / 酒店 Modal -->
+  <div id="fhModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-700/50 rounded-t-2xl">
+        <h3 id="fhModalTitle" class="font-bold text-slate-800 dark:text-slate-100 text-sm">新增事項</h3>
+        <button onclick="closeFHModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="fh-form" class="p-5 space-y-4 text-sm text-slate-800 dark:text-slate-100">
+        <input type="hidden" id="fh-edit-id">
+        <input type="hidden" id="fh-type">
+        <div>
+          <label class="block font-medium mb-1" id="fh-title-label">名稱 *</label>
+          <input type="text" id="fh-title" required class="w-full p-2.5 border rounded-xl outline-none bg-white dark:bg-slate-700">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium mb-1" id="fh-date1-label">時間 1</label>
+            <input type="text" id="fh-date1" class="w-full p-2.5 border rounded-xl outline-none bg-white dark:bg-slate-700">
+          </div>
+          <div>
+            <label class="block font-medium mb-1" id="fh-date2-label">時間 2</label>
+            <input type="text" id="fh-date2" class="w-full p-2.5 border rounded-xl outline-none bg-white dark:bg-slate-700">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium mb-1" id="fh-code-label">確認號 / 代碼</label>
+            <input type="text" id="fh-code" class="w-full p-2.5 border rounded-xl outline-none bg-white dark:bg-slate-700">
+          </div>
+          <div>
+            <label class="block font-medium mb-1" id="fh-extra-label">補充細節</label>
+            <input type="text" id="fh-extra" class="w-full p-2.5 border rounded-xl outline-none bg-white dark:bg-slate-700">
+          </div>
+        </div>
+        <div>
+          <label class="block font-medium mb-1">地址 / Google Maps 導航</label>
+          <input type="text" id="fh-nav" class="w-full p-2.5 border rounded-xl outline-none bg-white dark:bg-slate-700">
+        </div>
+        <div>
+          <label class="block font-medium mb-1">備註 / 注意事項</label>
+          <textarea id="fh-notes" rows="2" class="w-full p-2.5 border rounded-xl outline-none bg-white dark:bg-slate-700"></textarea>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">儲存資料</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: 管理區域 -->
+  <div id="manageRegionsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-5 shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b dark:border-slate-700 pb-2">
+        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm">管理大阪區域 (拖拉排序)</h3>
+        <button onclick="closeManageRegionsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="new-region-input" placeholder="輸入新區域 (如: 嵐山)" class="flex-1 p-2 border rounded-xl text-xs outline-none bg-white dark:bg-slate-700">
+        <button onclick="addRegion()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold">新增</button>
+      </div>
+      <div id="manage-regions-list" class="space-y-2 max-h-60 overflow-y-auto text-xs"></div>
+    </div>
+  </div>
+
+  <!-- 燈箱 (Lightbox) -->
+  <div id="lightboxModal" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center hidden p-4 select-none" onclick="closeLightbox(event)">
+    <button onclick="closeLightbox(event, true)" class="absolute top-4 right-4 text-white hover:text-slate-300 text-2xl z-10 p-2"><i class="fa-solid fa-xmark"></i></button>
+    <div class="max-w-4xl max-h-[85vh] p-2 flex flex-col items-center">
+      <img id="lightbox-img" src="" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl">
+    </div>
+  </div>
+
+  <!-- Firebase 與邏輯 Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
+      authDomain: "tokyo-travel-2026-9a82e.firebaseapp.com",
+      projectId: "tokyo-travel-2026-9a82e",
+      storageBucket: "tokyo-travel-2026-9a82e.firebasestorage.app",
+      messagingSenderId: "1066036344126",
+      appId: "1:1066036344126:web:8e47e8497866ea8206e86f",
+      measurementId: "G-6MFJZKJZ6H"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+
+    async function compressImage(file, maxDim = 600, quality = 0.6) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width, height = img.height;
+            if (width > height && width > maxDim) { height = Math.round((height * maxDim) / width); width = maxDim; }
+            else if (height > maxDim) { width = Math.round((width * maxDim) / height); height = maxDim; }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ⭐ 大阪專屬預設區域與座標 ⭐
+    const OSAKA_CENTER = [34.6937, 135.5023]; // 大阪心齋橋 / 梅田一帶
+    const defaultOsakaRegions = ["難波/心齋橋/道頓堀", "梅田", "天王寺/新世界", "環球影城(USJ)", "天保山/港區", "京都", "神戶/奈良"];
+    const defaultCategories = [
+      { name: "美食", icon: "fa-utensils", color: "bg-amber-100 text-amber-800 border-amber-200", activeBg: "bg-amber-600 text-white" },
+      { name: "景點", icon: "fa-torii-gate", color: "bg-emerald-100 text-emerald-800 border-emerald-200", activeBg: "bg-emerald-600 text-white" },
+      { name: "咖啡", icon: "fa-mug-hot", color: "bg-stone-100 text-stone-800 border-stone-200", activeBg: "bg-stone-600 text-white" },
+      { name: "購物", icon: "fa-bag-shopping", color: "bg-pink-100 text-pink-800 border-pink-200", activeBg: "bg-pink-600 text-white" }
+    ];
+
+    let regions = defaultOsakaRegions;
+    let categories = defaultCategories;
+    let currentRegion = 'all';
+    let currentCategory = 'all';
+    let allPlaces = [];
+    let allFH = [];
+    let allTodos = [];
+    let allQRCodes = [];
+    let allMemoItems = [];
+
+    let leafletMap = null;
+    let modalAdjustMap = null;
+    let modalAdjustMarker = null;
+    let markersMap = {};
+    let lightboxImages = [];
+    let currentLightboxIndex = 0;
+
+    function initMap() {
+      if (!leafletMap) {
+        leafletMap = L.map('map').setView(OSAKA_CENTER, 12);
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          maxZoom: 20,
+          subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+          attribution: 'Google Maps'
+        }).addTo(leafletMap);
+      }
+    }
+
+    function initModalAdjustMap(lat = OSAKA_CENTER[0], lng = OSAKA_CENTER[1]) {
+      if (!modalAdjustMap) {
+        modalAdjustMap = L.map('modal-adjust-map', { zoomControl: true, scrollWheelZoom: true }).setView([lat, lng], 15);
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'] }).addTo(modalAdjustMap);
+        modalAdjustMap.on('click', (e) => updateModalAdjustMarker(e.latlng.lat, e.latlng.lng));
+      }
+      updateModalAdjustMarker(lat, lng);
+      setTimeout(() => { if (modalAdjustMap) modalAdjustMap.invalidateSize(); }, 200);
+    }
+
+    function updateModalAdjustMarker(lat, lng) {
+      const latVal = parseFloat(lat), lngVal = parseFloat(lng);
+      if (isNaN(latVal) || isNaN(lngVal)) return;
+      document.getElementById('lat').value = latVal.toFixed(6);
+      document.getElementById('lng').value = lngVal.toFixed(6);
+
+      if (modalAdjustMarker) {
+        modalAdjustMarker.setLatLng([latVal, lngVal]);
+      } else if (modalAdjustMap) {
+        modalAdjustMarker = L.marker([latVal, lngVal], { draggable: true }).addTo(modalAdjustMap);
+        modalAdjustMarker.on('dragend', (e) => {
+          const newPos = e.target.getLatLng();
+          document.getElementById('lat').value = newPos.lat.toFixed(6);
+          document.getElementById('lng').value = newPos.lng.toFixed(6);
+        });
+      }
+      if (modalAdjustMap) modalAdjustMap.setView([latVal, lngVal], 15);
+    }
+
+    // 定位當前位置
+    window.locateUserPosition = () => {
+      if (!navigator.geolocation) return alert("瀏覽器不支援 GPS 定位！");
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          if (!leafletMap) initMap();
+          leafletMap.setView([lat, lng], 16);
+          L.marker([lat, lng]).addTo(leafletMap).bindPopup("📍 你目前的位置").openPopup();
+        },
+        () => alert("無法取得定位，請確認手機設定。"),
+        { enableHighAccuracy: true }
+      );
+    };
+
+    // Plus Code / 搜尋
+    let searchCandidates = [];
+    document.getElementById('parse-btn').addEventListener('click', async () => {
+      const inputStr = document.getElementById('map-url').value.trim();
+      const statusEl = document.getElementById('detect-status');
+      const boxEl = document.getElementById('search-candidates-box');
+      const listEl = document.getElementById('search-candidates-list');
+
+      if (!inputStr) return alert('請輸入 Plus Code、Google Maps 網址 或店名！');
+      statusEl.innerText = '正在解析中...';
+      boxEl.classList.add('hidden');
+      listEl.innerHTML = '';
+
+      const plusCodeRegex = /([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})/i;
+      const plusMatch = inputStr.match(plusCodeRegex);
+      if (plusMatch && typeof OpenLocationCode !== 'undefined') {
+        const rawCode = plusMatch[1].toUpperCase();
+        try {
+          if (OpenLocationCode.isValid(rawCode)) {
+            let fullCode = OpenLocationCode.isShort(rawCode) ? OpenLocationCode.recoverNearest(rawCode, OSAKA_CENTER[0], OSAKA_CENTER[1]) : rawCode;
+            const coord = OpenLocationCode.decode(fullCode);
+            updateModalAdjustMarker(coord.latitudeCenter, coord.longitudeCenter);
+            
+            const cleanTitle = inputStr.replace(plusCodeRegex, '').replace(/,/g, '').trim();
+            if (cleanTitle) {
+              document.getElementById('title').value = cleanTitle;
+              document.getElementById('notes').value = cleanTitle;
+            }
+            document.getElementById('nav-link').value = `https://www.google.com/maps/search/?api=1&query=${coord.latitudeCenter},${coord.longitudeCenter}`;
+            statusEl.innerText = '🎯 Plus Code 定位成功！';
+            return;
+          }
+        } catch (e) {}
+      }
+
+      try {
+        const apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(inputStr + ' Osaka Japan')}&limit=6&addressdetails=1`;
+        const res = await fetch(apiUrl, { headers: { 'Accept-Language': 'zh-TW,ja,en' } });
+        searchCandidates = await res.json();
+        if (searchCandidates && searchCandidates.length > 0) {
+          statusEl.innerText = `找到 ${searchCandidates.length} 間店家，請點選：`;
+          boxEl.classList.remove('hidden');
+          listEl.innerHTML = searchCandidates.map((item, idx) => `
+            <div onclick="selectCandidate(${idx})" class="p-2 hover:bg-indigo-50 rounded-lg cursor-pointer transition border border-slate-100 flex flex-col gap-0.5">
+              <div class="font-bold text-slate-800 text-xs flex justify-between"><span>📍 ${item.name || item.display_name.split(',')[0]}</span><span class="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">選擇</span></div>
+              <div class="text-[11px] text-slate-500 truncate">${item.display_name}</div>
+            </div>
+          `).join('');
+          selectCandidate(0, false);
+        } else {
+          statusEl.innerText = '❌ 找不到該店名，請嘗試更具體名稱';
+        }
+      } catch (err) {
+        statusEl.innerText = '⚠️ 搜尋失敗，請手動拖曳定位';
+      }
+    });
+
+    window.selectCandidate = (idx, hideBox = true) => {
+      const item = searchCandidates[idx];
+      if (!item) return;
+      const shortName = item.name || item.display_name.split(',')[0];
+      document.getElementById('title').value = shortName;
+      document.getElementById('notes').value = item.display_name;
+      updateModalAdjustMarker(item.lat, item.lon);
+      document.getElementById('detect-status').innerText = `✅ 已選取：${shortName}`;
+      if (!document.getElementById('nav-link').value) {
+        document.getElementById('nav-link').value = `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`;
+      }
+      if (hideBox) document.getElementById('search-candidates-box').classList.add('hidden');
+    };
+
+    // 儲存景點 (存入 osaka_places)
+    document.getElementById('place-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('edit-id').value;
+      const titleVal = (document.getElementById('title').value || '').trim();
+
+      const rawLat = parseFloat(document.getElementById('lat').value);
+      const rawLng = parseFloat(document.getElementById('lng').value);
+      const validLat = Number.isFinite(rawLat) ? rawLat : null;
+      const validLng = Number.isFinite(rawLng) ? rawLng : null;
+
+      const fileInput = document.getElementById('image-file');
+      const extraFileInput = document.getElementById('extra-images-file');
+      
+      let finalImg = document.getElementById('image-url').value || '';
+      if (fileInput.files.length > 0) finalImg = await compressImage(fileInput.files[0]);
+
+      let newExtraImages = [...existingExtraImages];
+      if (extraFileInput.files.length > 0) {
+        for (let f of extraFileInput.files) {
+          const b64 = await compressImage(f);
+          newExtraImages.push(b64);
+        }
+      }
+
+      const placeData = {
+        title: titleVal,
+        region: document.getElementById('region-select').value || regions[0],
+        category: document.getElementById('category-select').value || categories[0].name,
+        imageUrl: finalImg,
+        extraImages: newExtraImages,
+        recommendation: (document.getElementById('recommendation').value || '').trim(),
+        notes: (document.getElementById('notes').value || '').trim(),
+        navLink: (document.getElementById('nav-link').value || '').trim(),
+        lat: validLat,
+        lng: validLng,
+      };
+
+      try {
+        if (editId) {
+          await updateDoc(doc(db, "osaka_places", editId), placeData);
+        } else {
+          placeData.status = 'unvisited';
+          placeData.createdAt = new Date();
+          await addDoc(collection(db, "osaka_places"), placeData);
+        }
+        closePlaceModal();
+      } catch (err) {
+        alert("儲存失敗！原因：" + err.message);
+      }
+    });
+
+    // 渲染主畫面
+    function renderApp() {
+      const searchKeyword = document.getElementById('search-input').value.trim().toLowerCase();
+
+      document.getElementById('region-count').innerText = `${regions.length}個`;
+      let regHTML = `
+        <button onclick="setRegion('all')" class="w-full flex justify-between items-center px-3 py-2 rounded-xl text-xs font-medium transition ${currentRegion === 'all' ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
+          <span>全部區域</span><span class="${currentRegion === 'all' ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-500'} px-2 py-0.5 rounded-full text-[10px]">${allPlaces.length}</span>
+        </button>
+      `;
+      regions.forEach(r => {
+        const count = allPlaces.filter(p => p.region === r || (r.includes('/') && p.region && r.split('/').includes(p.region))).length;
+        const active = currentRegion === r;
+        regHTML += `
+          <button onclick="setRegion('${r}')" class="w-full flex justify-between items-center px-3 py-2 rounded-xl text-xs font-medium transition ${active ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
+            <span>${r}</span><span class="${active ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-400'} px-2 py-0.5 rounded-full text-[10px]">${count}</span>
+          </button>
+        `;
+      });
+      document.getElementById('region-list').innerHTML = regHTML;
+
+      let catHTML = `<button onclick="setCategory('all')" class="px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap shadow-sm border ${currentCategory === 'all' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}">全部</button>`;
+      categories.forEach(c => {
+        const active = currentCategory === c.name;
+        catHTML += `
+          <button onclick="setCategory('${c.name}')" class="px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 border shadow-sm ${active ? `${c.activeBg} border-transparent shadow` : `${c.color} hover:opacity-80`}">
+            <span>${c.name}</span><i class="fa-solid ${c.icon || 'fa-tag'} text-[11px]"></i>
+          </button>
+        `;
+      });
+      document.getElementById('category-tabs').innerHTML = catHTML;
+
+      const filtered = allPlaces.filter(p => {
+        const matchRegion = currentRegion === 'all' || p.region === currentRegion || (currentRegion.includes('/') && p.region && currentRegion.split('/').includes(p.region));
+        const matchCategory = currentCategory === 'all' || p.category === currentCategory;
+        const matchSearch = !searchKeyword || 
+          (p.title && p.title.toLowerCase().includes(searchKeyword)) ||
+          (p.region && p.region.toLowerCase().includes(searchKeyword)) ||
+          (p.recommendation && p.recommendation.toLowerCase().includes(searchKeyword));
+        return matchRegion && matchCategory && matchSearch;
+      });
+
+      document.getElementById('current-region-label').innerText = currentRegion === 'all' ? '全部區域' : currentRegion;
+      document.getElementById('places-count').innerText = `共 ${filtered.length} 個地點`;
+
+      initMap();
+      Object.values(markersMap).forEach(m => leafletMap.removeLayer(m));
+      markersMap = {};
+      const bounds = [];
+
+      filtered.forEach(item => {
+        if (item.lat && item.lng) {
+          const marker = L.marker([item.lat, item.lng]).addTo(leafletMap);
+          marker.bindPopup(`<b>${item.title}</b><br>${item.category} | ${item.region}`);
+          markersMap[item.id] = marker;
+          bounds.push([item.lat, item.lng]);
+        }
+      });
+
+      document.getElementById('places-grid').innerHTML = filtered.map(item => {
+        const isVisited = item.status === 'visited';
+        return `
+          <div id="card-${item.id}" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col justify-between">
+            <div>
+              ${item.imageUrl ? `<img src="${item.imageUrl}" loading="lazy" class="w-full h-44 object-cover">` : ''}
+              <div class="p-4 space-y-2">
+                <div class="flex justify-between items-center">
+                  <span class="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">${item.category}</span>
+                  <button onclick="toggleCheck('${item.id}', '${item.status}')" class="text-xs px-2 py-0.5 rounded-full border ${isVisited ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'text-slate-400 border-slate-200'}">
+                    ${isVisited ? '✓ 已打卡' : '未打卡'}
+                  </button>
+                </div>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">${item.title}</h4>
+                ${item.recommendation ? `<div class="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg">推介：${item.recommendation}</div>` : ''}
+                ${item.notes ? `<div class="text-xs text-slate-500">${item.notes}</div>` : ''}
+              </div>
+            </div>
+            <div class="p-4 pt-0 flex justify-between items-center text-xs text-slate-500 border-t border-slate-50 dark:border-slate-700 pt-3">
+              <button onclick="focusOnMap('${item.id}', ${item.lat}, ${item.lng})" class="text-indigo-600 font-bold hover:underline">顯示地圖</button>
+              <div class="flex gap-2">
+                ${item.navLink ? `<a href="${item.navLink}" target="_blank" class="text-indigo-600 hover:underline">導航</a>` : ''}
+                <button onclick="openEditModal('${item.id}')" class="text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button onclick="deletePlace('${item.id}')" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.setRegion = (r) => { currentRegion = r; renderApp(); };
+    window.setCategory = (c) => { currentCategory = c; renderApp(); };
+    window.toggleCheck = async (id, status) => {
+      await updateDoc(doc(db, "osaka_places", id), { status: status === 'visited' ? 'unvisited' : 'visited' });
+    };
+    window.deletePlace = async (id) => {
+      if (confirm("確定刪除此景點？")) await deleteDoc(doc(db, "osaka_places", id));
+    };
+
+    window.focusOnMap = (id, lat, lng) => {
+      document.getElementById('map-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (lat && lng && leafletMap) {
+        leafletMap.setView([lat, lng], 16, { animate: true });
+        if (markersMap[id]) markersMap[id].openPopup();
+      }
+    };
+
+    // 隨手備忘
+    const memoInput = document.getElementById('memo-input');
+    let memoTimeout = null;
+    memoInput.addEventListener('input', () => {
+      clearTimeout(memoTimeout);
+      memoTimeout = setTimeout(async () => {
+        await setDoc(doc(db, "settings", "osaka_memo"), { content: memoInput.value });
+      }, 800);
+    });
+
+    onSnapshot(doc(db, "settings", "osaka_memo"), (docSnap) => {
+      if (docSnap.exists() && document.activeElement !== memoInput) {
+        memoInput.value = docSnap.data().content || '';
+      }
+    });
+
+    window.uploadMemoImage = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const b64 = await compressImage(file);
+      await addDoc(collection(db, "osaka_memo_items"), { type: 'image', imageUrl: b64, createdAt: new Date() });
+      e.target.value = '';
+    };
+
+    window.addMemoDivider = async () => {
+      const title = prompt("請輸入分隔線文字:", "重要門票");
+      if (title) await addDoc(collection(db, "osaka_memo_items"), { type: 'divider', title, createdAt: new Date() });
+    };
+
+    window.deleteMemoItem = async (id) => {
+      if (confirm("確定刪除？")) await deleteDoc(doc(db, "osaka_memo_items", id));
+    };
+
+    onSnapshot(collection(db, "osaka_memo_items"), (snapshot) => {
+      allMemoItems = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      const container = document.getElementById('memo-items-container');
+      if (container) {
+        container.innerHTML = allMemoItems.map(item => {
+          if (item.type === 'divider') return `<div class="flex justify-between border-b pt-2 pb-1 text-xs font-bold text-amber-900"><span>--- ${item.title} ---</span><button onclick="deleteMemoItem('${item.id}')" class="text-amber-600">✕</button></div>`;
+          return `<div class="inline-block relative m-1"><img src="${item.imageUrl}" class="w-16 h-16 object-cover rounded-lg border border-amber-200"><button onclick="deleteMemoItem('${item.id}')" class="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-4 h-4 text-[9px]">✕</button></div>`;
+        }).join('');
+      }
+    });
+
+    // 監聽大阪景點
+    onSnapshot(collection(db, "osaka_places"), (snapshot) => {
+      allPlaces = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      renderApp();
+    });
+
+    let existingExtraImages = [];
+    window.openAddModal = () => {
+      document.getElementById('place-form').reset();
+      document.getElementById('edit-id').value = '';
+      existingExtraImages = [];
+      document.getElementById('extra-images-preview').innerHTML = '';
+      populateSelects();
+      document.getElementById('placeModal').classList.remove('hidden');
+      initModalAdjustMap(OSAKA_CENTER[0], OSAKA_CENTER[1]);
+    };
+
+    window.openEditModal = (id) => {
+      const item = allPlaces.find(p => p.id === id);
+      if (!item) return;
+      populateSelects();
+      document.getElementById('edit-id').value = item.id;
+      document.getElementById('title').value = item.title || '';
+      document.getElementById('region-select').value = item.region || regions[0];
+      document.getElementById('category-select').value = item.category || categories[0].name;
+      document.getElementById('image-url').value = item.imageUrl || '';
+      document.getElementById('recommendation').value = item.recommendation || '';
+      document.getElementById('notes').value = item.notes || '';
+      document.getElementById('nav-link').value = item.navLink || '';
+      document.getElementById('lat').value = item.lat || '';
+      document.getElementById('lng').value = item.lng || '';
+      existingExtraImages = item.extraImages || [];
+      document.getElementById('placeModal').classList.remove('hidden');
+      initModalAdjustMap(item.lat || OSAKA_CENTER[0], item.lng || OSAKA_CENTER[1]);
+    };
+
+    window.closePlaceModal = () => document.getElementById('placeModal').classList.add('hidden');
+
+    function populateSelects() {
+      document.getElementById('region-select').innerHTML = regions.map(r => `<option value="${r}">${r}</option>`).join('');
+      document.getElementById('category-select').innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+
+    const searchInput = document.getElementById('search-input');
+    ['input', 'keyup'].forEach(evt => searchInput.addEventListener(evt, () => renderApp()));
+
+    window.toggleDarkMode = () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateThemeIcon(isDark);
+    };
+    function updateThemeIcon(isDark) {
+      const icon = document.getElementById('theme-icon');
+      if (icon) icon.className = isDark ? 'fa-solid fa-sun text-amber-400' : 'fa-solid fa-moon text-yellow-300';
+    }
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+      updateThemeIcon(true);
+    }
+    populateSelects();
+    renderApp();
+  </script>
+</body>
+</html>
