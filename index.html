@@ -522,7 +522,7 @@
   <!-- Firebase SDK & JS Logic (精簡地圖專頁版) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
@@ -534,13 +534,10 @@
       measurementId: "G-6MFJZKJZ6H"
     };
 
-    conconst app = initializeApp(firebaseConfig);
-import { initializeFirestore, persistentLocalCache } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({})
-});st app = initializeApp(firebaseConfig);
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = initializeFirestore(app, {
+      localCache: persistentLocalCache({})
+    });
 
     async function compressImage(file, maxDim = 600, quality = 0.6) {
       return new Promise((resolve) => {
