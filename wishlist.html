@@ -81,7 +81,7 @@
 
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
@@ -94,9 +94,7 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = initializeFirestore(app, {
-      localCache: persistentLocalCache({})
-    });
+    const db = getFirestore(app);
 
     async function compressImage(file, maxDim = 600, quality = 0.6) {
       return new Promise((resolve) => {
