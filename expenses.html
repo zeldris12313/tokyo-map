@@ -608,9 +608,23 @@
       }).join('');
     }
 
-    // 監聽 Firebase 記帳資料
+    // ⭐ 本地瞬間快取：第 0 秒即時還原所有記帳與手信，完全唔使等 ⭐
+    try {
+      const cachedExpenses = localStorage.getItem('local_cache_expenses');
+      if (cachedExpenses) {
+        allExpenses = JSON.parse(cachedExpenses);
+        renderExpensesGroupedByDate(); // 0秒即時展示所有花費手風琴
+      }
+    } catch (e) {
+      console.warn("讀取本機記帳快取略過:", e);
+    }
+
+    // 監聽 Firebase 記帳資料 (背景靜默同步，並自動存入本地快取)
     onSnapshot(collection(db, "expenses"), (snapshot) => {
       allExpenses = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      try {
+        localStorage.setItem('local_cache_expenses', JSON.stringify(allExpenses));
+      } catch (e) {}
       renderExpensesGroupedByDate();
     });
 
