@@ -1,23 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <!-- 強制註銷舊版 Service Worker 並清除網站快取 -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (let registration of registrations) {
-          registration.unregister();
-        }
-      });
-    }
-    if ('caches' in window) {
-      caches.keys().then(function(names) {
-        for (let name of names) {
-          caches.delete(name);
-        }
-      });
-    }
-  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>東京自由行地圖筆記</title>
@@ -1147,9 +1130,31 @@
       }
     });
 
-    // 監聽景點
+    // ⭐ 本地瞬間快取：第 0 秒即時還原景點與分類，完全不需等待網絡 ⭐
+    try {
+      const cachedPlaces = localStorage.getItem('local_cache_places');
+      if (cachedPlaces) {
+        allPlaces = JSON.parse(cachedPlaces);
+        renderApp(); // 瞬間完成畫面渲染！
+      }
+      const cachedConfig = localStorage.getItem('local_cache_app_config');
+      if (cachedConfig) {
+        const data = JSON.parse(cachedConfig);
+        if (data.regions) regions = data.regions;
+        if (data.categories) categories = data.categories;
+        renderApp();
+        populateSelects();
+      }
+    } catch (e) {
+      console.warn("讀取本機快取略過:", e);
+    }
+
+    // 監聽景點 (背景靜默同步，並自動存入硬碟快取)
     onSnapshot(collection(db, "places"), (snapshot) => {
       allPlaces = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      try {
+        localStorage.setItem('local_cache_places', JSON.stringify(allPlaces));
+      } catch (e) {}
       renderApp();
     });
 
