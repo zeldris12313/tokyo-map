@@ -399,8 +399,9 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    import { initializeFirestore, persistentLocalCache } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     const db = initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      localCache: persistentLocalCache({})
     });
 
     async function compressImage(file, maxDim = 600, quality = 0.6) {
