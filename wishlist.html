@@ -180,9 +180,25 @@
       });
     }
 
+        // ⭐ 本地瞬間快取：第 0 秒即時還原相簿與排序 ⭐
+    try {
+      const cachedWishlist = localStorage.getItem('local_cache_wishlist');
+      if (cachedWishlist) {
+        allShoppingItems = JSON.parse(cachedWishlist);
+        allShoppingItems.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        renderShoppingAlbum(); // 0秒即刻睇到所有想買相片
+      }
+    } catch (e) {
+      console.warn("讀取本機相簿快取略過:", e);
+    }
+
+    // 監聽想買物品 (背景靜默同步，並自動存入本地快取)
     onSnapshot(collection(db, "shopping_items"), (snapshot) => {
       allShoppingItems = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       allShoppingItems.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      try {
+        localStorage.setItem('local_cache_wishlist', JSON.stringify(allShoppingItems));
+      } catch (e) {}
       renderShoppingAlbum();
     });
 
