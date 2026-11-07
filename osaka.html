@@ -780,9 +780,23 @@
       }
     });
 
-    // 監聽大阪景點
+    // ⭐ 本地瞬間快取：第 0 秒即時還原大阪景點 ⭐
+    try {
+      const cachedOsaka = localStorage.getItem('local_cache_osaka_places');
+      if (cachedOsaka) {
+        allPlaces = JSON.parse(cachedOsaka);
+        renderApp(); // 0秒即時展示大阪地圖與景點
+      }
+    } catch (e) {
+      console.warn("讀取大阪快取略過:", e);
+    }
+
+    // 監聽大阪景點 (背景靜默同步，並自動存入本地快取)
     onSnapshot(collection(db, "osaka_places"), (snapshot) => {
       allPlaces = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      try {
+        localStorage.setItem('local_cache_osaka_places', JSON.stringify(allPlaces));
+      } catch (e) {}
       renderApp();
     });
 
