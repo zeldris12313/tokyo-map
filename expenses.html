@@ -195,6 +195,7 @@
       measurementId: "G-6MFJZKJZ6H"
     };
 
+    const app = initializeApp(firebaseConfig);
     import { initializeFirestore, persistentLocalCache } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     const db = initializeFirestore(app, {
       localCache: persistentLocalCache({})
