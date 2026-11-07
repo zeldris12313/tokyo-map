@@ -520,22 +520,24 @@
   </div>
 
   <!-- Firebase SDK & JS Logic (精簡地圖專頁版) -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
-    authDomain: "tokyo-travel-2026-9a82e.firebaseapp.com",
-    projectId: "tokyo-travel-2026-9a82e",
-    storageBucket: "tokyo-travel-2026-9a82e.firebasestorage.app",
-    messagingSenderId: "1066036344126",
-    appId: "1:1066036344126:web:8e47e8497866ea8206e86f",
-    measurementId: "G-6MFJZKJZ6H"
-  };
+    const firebaseConfig = {
+      apiKey: "AIzaSyDgwn1M-tPBlNguY0xjQ7XhTYpybNP08CI",
+      authDomain: "tokyo-travel-2026-9a82e.firebaseapp.com",
+      projectId: "tokyo-travel-2026-9a82e",
+      storageBucket: "tokyo-travel-2026-9a82e.firebasestorage.app",
+      messagingSenderId: "1066036344126",
+      appId: "1:1066036344126:web:8e47e8497866ea8206e86f",
+      measurementId: "G-6MFJZKJZ6H"
+    };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
 
     async function compressImage(file, maxDim = 600, quality = 0.6) {
       return new Promise((resolve) => {
