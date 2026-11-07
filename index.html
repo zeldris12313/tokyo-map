@@ -1193,29 +1193,15 @@
     }
     switchTrip(currentTrip);
 
-    // ===== ⭐ Service Worker 離線快取引擎 ⭐ =====
+    // ⭐ 自動清除並註銷舊有鎖死網頁的 Service Worker 快取 ⭐
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        const swScript = `
-          const CACHE_NAME = 'travel-app-v3';
-          self.addEventListener('install', (e) => self.skipWaiting());
-          self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
-          self.addEventListener('fetch', (e) => {
-            if (e.request.method === 'GET' && !e.request.url.includes('firestore.googleapis.com')) {
-              e.respondWith(
-                fetch(e.request)
-                  .then((res) => {
-                    const resClone = res.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
-                    return res;
-                  })
-                  .catch(() => caches.match(e.request))
-              );
-            }
-          });
-        `;
-        const blob = new Blob([swScript], { type: 'application/javascript' });
-        navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+      caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
       });
     }
   </script>
